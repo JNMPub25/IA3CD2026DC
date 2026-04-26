@@ -1,0 +1,6 @@
+Ballot_Number,Delegate_Number,Slate Vote
+INSTRUCTIONS: One row per paper ballot. Enter YES or NO in the Slate Vote column. Ballot_Number and Delegate_Number are required.
+EXAMPLE,,
+1,101,YES
+2,102,NO
+3,103,YES

@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>District 3 — Practice Ballot</title>
+<style>
+/* ── Reset & base ─────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  height: 100%;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  font-size: 16px;
+  background: #f4f6f9;
+  color: #1a1a2e;
+}
+
+/* ── Screens ──────────────────────────────────────────────────────── */
+.screen { display: none; min-height: 100vh; flex-direction: column; align-items: center; padding: 1rem; }
+.screen.active { display: flex; }
+
+/* ── Practice mode banner ─────────────────────────────────────────── */
+#practice-banner {
+  display: block;
+  width: 100%; max-width: 600px;
+  background: #f9a825; color: #3e2700;
+  text-align: center; font-weight: 700; font-size: 0.9rem;
+  padding: 0.5rem; border-radius: 6px; margin-bottom: 0.75rem;
+  letter-spacing: 0.04em;
+}
+
+/* ── Card ─────────────────────────────────────────────────────────── */
+.card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.10);
+  padding: 2rem 1.5rem;
+  width: 100%; max-width: 560px;
+}
+
+/* ── Header ───────────────────────────────────────────────────────── */
+.ballot-header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+.ballot-header .org {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #555;
+  margin-bottom: 0.3rem;
+}
+.ballot-header h1 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #003366;
+  line-height: 1.25;
+}
+.ballot-header .subtitle {
+  font-size: 0.88rem;
+  color: #666;
+  margin-top: 0.3rem;
+}
+
+/* ── Phase / timer bar ────────────────────────────────────────────── */
+#phase-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #eaf0fb;
+  border-radius: 8px;
+  padding: 0.6rem 1rem;
+  margin-bottom: 1.2rem;
+  font-size: 0.85rem;
+}
+#phase-label { font-weight: 600; color: #003366; }
+#countdown {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #2ecc71;
+  font-variant-numeric: tabular-nums;
+  min-width: 5ch;
+  text-align: right;
+}
+#countdown.warn { color: #e67e22; }
+#countdown.urgent { color: #c0392b; }
+
+/* ── Delegate info strip ──────────────────────────────────────────── */
+#delegate-strip {
+  font-size: 0.8rem;
+  color: #888;
+  text-align: right;
+  margin-bottom: 1rem;
+}
+
+/* ── Instructions ─────────────────────────────────────────────────── */
+.instructions {
+  font-size: 0.875rem;
+  color: #444;
+  background: #f8f9fa;
+  border-left: 3px solid #003366;
+  padding: 0.7rem 0.9rem;
+  border-radius: 0 6px 6px 0;
+  margin-bottom: 1.4rem;
+  line-height: 1.5;
+}
+
+/* ── Candidate rows (ranked) ──────────────────────────────────────── */
+.candidate-row {
+  display: flex;
+  align-items: center;
+  padding: 0.65rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #e0e4ea;
+  margin-bottom: 0.5rem;
+  background: #fff;
+  transition: background 0.15s, border-color 0.15s;
+  gap: 0.75rem;
+}
+.candidate-row:hover { background: #f5f8ff; }
+.candidate-row.ranked { background: #eaf3ff; border-color: #5b9bd5; }
+.candidate-row.locked { opacity: 0.45; pointer-events: none; }
+
+.cand-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem; height: 2rem;
+  border-radius: 50%;
+  background: #e8edf5;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #003366;
+  flex-shrink: 0;
+}
+.cand-name { flex: 1; font-size: 1rem; font-weight: 500; }
+.rank-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: #f0f4fa url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23555'/%3E%3C/svg%3E") no-repeat right 0.6rem center / 10px;
+  border: 1px solid #bbc8dc;
+  border-radius: 6px;
+  padding: 0.45rem 1.8rem 0.45rem 0.65rem;
+  font-size: 0.9rem;
+  color: #1a1a2e;
+  cursor: pointer;
+  min-width: 80px;
+}
+.rank-select:focus { outline: 2px solid #5b9bd5; }
+.rank-select option:disabled { color: #bbb; }
+
+/* ── Buttons ──────────────────────────────────────────────────────── */
+.btn {
+  display: block;
+  width: 100%;
+  padding: 0.85rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+  margin-top: 1rem;
+}
+.btn-primary { background: #003366; color: #fff; }
+.btn-primary:hover:not(:disabled) { background: #004488; }
+.btn-secondary { background: #e8edf5; color: #003366; }
+.btn-secondary:hover { background: #dae3f0; }
+.btn-danger { background: #c0392b; color: #fff; }
+.btn-danger:hover:not(:disabled) { background: #a93226; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-practice { background: #f9a825; color: #3e2700; }
+.btn-practice:hover:not(:disabled) { background: #e65100; color: #fff; }
+
+/* ── Text input ───────────────────────────────────────────────────── */
+.text-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 1.1rem;
+  border: 2px solid #bbc8dc;
+  border-radius: 8px;
+  margin-top: 1rem;
+  text-align: center;
+  letter-spacing: 0.1em;
+}
+.text-input:focus { outline: none; border-color: #5b9bd5; }
+
+/* ── Review screen ────────────────────────────────────────────────── */
+.review-list { list-style: none; margin-bottom: 0.5rem; }
+.review-list li {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid #eee;
+  font-size: 0.95rem;
+  align-items: center;
+}
+.review-list li:last-child { border-bottom: none; }
+.review-rank {
+  background: #003366; color: #fff;
+  border-radius: 50%;
+  width: 1.8rem; height: 1.8rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 0.8rem; font-weight: 700; flex-shrink: 0;
+}
+.review-rank.unranked { background: #ccc; }
+
+/* ── Practice complete screen ─────────────────────────────────────── */
+.practice-check {
+  font-size: 4rem;
+  text-align: center;
+  margin: 1rem 0;
+}
+.practice-tip {
+  background: #eaf0fb;
+  border-left: 3px solid #003366;
+  border-radius: 0 6px 6px 0;
+  padding: 0.7rem 0.9rem;
+  font-size: 0.875rem;
+  color: #333;
+  line-height: 1.55;
+  margin-top: 1rem;
+  text-align: left;
+}
+
+/* ── Error message ────────────────────────────────────────────────── */
+.error-msg {
+  color: #c0392b;
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+  text-align: center;
+  min-height: 1.2em;
+}
+
+/* ── Timer expired overlay ────────────────────────────────────────── */
+#timer-expired-msg {
+  display: none;
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  color: #856404;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+</style>
+</head>
+<body>
+
+<!-- ── PRACTICE BANNER (always visible at top of every screen) ────────────── -->
+<div id="practice-banner">🗳️ PRACTICE MODE — This is not a real ballot. No votes are recorded. 🗳️</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     SCREEN 1 — DELEGATE NUMBER ENTRY
+════════════════════════════════════════════════════════════════════════ -->
+<div id="screen-entry" class="screen active">
+  <div class="card" style="margin-top:2rem;">
+    <div class="ballot-header">
+      <div class="org">Iowa Democratic Party — Practice Session</div>
+      <h1>3rd Congressional District Convention</h1>
+      <div class="subtitle">SCC — Women (Ranked Choice) — <em>Practice Ballot</em></div>
+    </div>
+
+    <div style="background:#fff8e1;border:1px solid #f9a825;border-radius:8px;padding:0.9rem 1rem;
+         font-size:0.88rem;color:#4e3500;margin-bottom:1rem;line-height:1.5;">
+      <strong>Welcome to ballot practice!</strong><br>
+      This practice session uses sample candidates and a <strong>2½-minute timer</strong> —
+      the same as the real vote. Enter any number below to get started.
+      Nothing you do here is recorded.
+    </div>
+
+    <p style="font-size:0.95rem;color:#444;margin-bottom:0.25rem;">
+      Enter any delegate number to begin your practice ballot.
+    </p>
+    <input id="delegate-input" class="text-input" type="text" inputmode="numeric"
+           pattern="[0-9]*" placeholder="Enter any number (e.g. 42)" autocomplete="off" autocorrect="off">
+    <div id="entry-error" class="error-msg"></div>
+    <button id="btn-begin" class="btn btn-practice" style="margin-top:1.2rem;">Begin Practice ▶</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     SCREEN 2 — BALLOT
+════════════════════════════════════════════════════════════════════════ -->
+<div id="screen-ballot" class="screen">
+  <div class="card">
+    <div class="ballot-header">
+      <div class="org">Iowa Democratic Party — 3rd Congressional District</div>
+      <h1>SCC — Women (Ranked Choice)</h1>
+    </div>
+
+    <div id="phase-bar">
+      <span id="phase-label">Time Remaining</span>
+      <span id="countdown">2:30</span>
+    </div>
+
+    <div id="delegate-strip"></div>
+
+    <div id="timer-expired-msg">
+      ⏰ Time's up! In the real election, your ballot would be submitted automatically.
+      You can still review your practice selections below.
+    </div>
+
+    <div class="instructions">
+      Rank the candidates in order of preference. <strong>1st</strong> = your top choice.<br>
+      You may rank as many or as few candidates as you like.<br>
+      Use the dropdowns to assign a rank. Leave a candidate blank to skip them.
+    </div>
+
+    <!-- Candidates injected here -->
+    <div id="candidates-container"></div>
+
+    <button id="btn-review" class="btn btn-primary">Review &amp; Submit Practice Ballot</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     SCREEN 3 — REVIEW
+════════════════════════════════════════════════════════════════════════ -->
+<div id="screen-review" class="screen">
+  <div class="card" style="margin-top:1.5rem;">
+    <div class="ballot-header">
+      <h1>Review Your Practice Ballot</h1>
+      <div class="subtitle">SCC — Women (Ranked Choice)</div>
+    </div>
+
+    <ul id="review-list" class="review-list"></ul>
+
+    <div style="background:#fff8e1;border:1px solid #f9a825;border-radius:6px;
+         padding:0.7rem 0.9rem;font-size:0.85rem;color:#4e3500;margin-top:1rem;">
+      In the real election, once you submit your ballot it cannot be changed.
+      On this practice ballot, you can go back and edit as many times as you like.
+    </div>
+
+    <button id="btn-back"   class="btn btn-secondary">← Edit Ballot</button>
+    <button id="btn-submit" class="btn btn-practice">Submit Practice Ballot ▶</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     SCREEN 4 — PRACTICE COMPLETE
+════════════════════════════════════════════════════════════════════════ -->
+<div id="screen-complete" class="screen" style="justify-content:center;">
+  <div class="card" style="text-align:center;">
+    <div class="practice-check">🎉</div>
+    <h2 style="color:#003366;margin-bottom:0.5rem;">Practice Complete!</h2>
+    <p style="font-size:0.95rem;color:#444;margin-bottom:0.5rem;">
+      Great job! You've completed the practice ballot for:
+    </p>
+    <p style="font-weight:700;color:#003366;font-size:1.05rem;margin-bottom:1rem;">
+      SCC — Women (Ranked Choice)
+    </p>
+    <div class="practice-tip">
+      <strong>What to remember on convention day:</strong><br>
+      • Scan the QR code displayed on screen to open your real ballot<br>
+      • Enter your <em>actual</em> delegate number (from your credential badge)<br>
+      • Rank as many or as few candidates as you like — 1st = your top choice<br>
+      • Tap <em>Review &amp; Submit</em> when you're ready — your vote is final once submitted<br>
+      • If the voting window closes, your ballot is submitted automatically
+    </div>
+    <button id="btn-again" class="btn btn-practice" style="margin-top:1.5rem;">Practice Again ↺</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════════════════════════════════════════════ -->
+<script>
+"use strict";
+
+// ── SAMPLE CANDIDATES (hardcoded for practice) ────────────────────────────
+// These are fictional names — delegates practice the ranked-choice interface.
+const CANDIDATES = [
+  { letter: "A", name: "Adams, Carol" },
+  { letter: "B", name: "Bennett, Diane" },
+  { letter: "C", name: "Chen, Megan" },
+  { letter: "D", name: "Davis, Rachel" },
+  { letter: "E", name: "Evans, Patricia" },
+  { letter: "F", name: "Flores, Sandra" },
+];
+
+// ── STATE ────────────────────────────────────────────────────────────────
+let delegateNumber     = "";
+let shuffledCandidates = [];
+let currentRankings    = {};   // { candidateLetter: rank (1-based) | null }
+let countdownInterval  = null;
+let timerExpired       = false;
+const PRACTICE_SECONDS = 150;  // 2 minutes 30 seconds
+
+// ── SCREEN HELPER ────────────────────────────────────────────────────────
+function show(screenId) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById(screenId).classList.add("active");
+  window.scrollTo(0, 0);
+}
+
+// ── SEEDED PRNG (mulberry32) — same as real ballot ────────────────────────
+function mulberry32(seed) {
+  return function() {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+function hashStr(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    h = Math.imul(31, h) + str.charCodeAt(i) | 0;
+  }
+  return Math.abs(h);
+}
+
+function seededShuffle(arr, seed) {
+  const rng      = mulberry32(seed);
+  const shuffled = [...arr];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+// ── ENTRY SCREEN ─────────────────────────────────────────────────────────
+document.getElementById("btn-begin").addEventListener("click", beginPractice);
+document.getElementById("delegate-input").addEventListener("keydown", e => {
+  if (e.key === "Enter") beginPractice();
+});
+
+function beginPractice() {
+  const raw = document.getElementById("delegate-input").value.trim();
+  if (!raw || !/^\d+$/.test(raw)) {
+    document.getElementById("entry-error").textContent = "Please enter any number to begin.";
+    return;
+  }
+  document.getElementById("entry-error").textContent = "";
+  delegateNumber = raw;
+
+  // Reset state
+  currentRankings = {};
+  timerExpired    = false;
+  shuffledCandidates = seededShuffle(CANDIDATES, hashStr(delegateNumber + "practice"));
+  CANDIDATES.forEach(c => { currentRankings[c.letter] = null; });
+
+  document.getElementById("delegate-strip").textContent = `Practice Delegate #${delegateNumber}`;
+  document.getElementById("timer-expired-msg").style.display = "none";
+
+  renderBallot();
+  startTimer();
+  show("screen-ballot");
+}
+
+// ── TIMER ────────────────────────────────────────────────────────────────
+function startTimer() {
+  clearInterval(countdownInterval);
+  let secsLeft = PRACTICE_SECONDS;
+
+  const el    = document.getElementById("countdown");
+  const label = document.getElementById("phase-label");
+
+  function tick() {
+    if (secsLeft <= 0) {
+      clearInterval(countdownInterval);
+      el.textContent = "0:00";
+      el.className   = "urgent";
+      label.textContent = "Time Expired";
+      onTimerExpired();
+      return;
+    }
+
+    const mins = Math.floor(secsLeft / 60);
+    const secs = secsLeft % 60;
+    el.textContent = `${mins}:${String(secs).padStart(2, "0")}`;
+
+    if (secsLeft <= 30) {
+      el.className = "urgent";
+    } else if (secsLeft <= 60) {
+      el.className = "warn";
+    } else {
+      el.className = "";
+    }
+
+    secsLeft--;
+  }
+
+  tick();
+  countdownInterval = setInterval(tick, 1000);
+}
+
+function onTimerExpired() {
+  timerExpired = true;
+  // Disable rank selects (mimic real ballot closing)
+  document.querySelectorAll(".rank-select").forEach(sel => sel.disabled = true);
+  document.getElementById("timer-expired-msg").style.display = "block";
+  // In practice we don't auto-navigate — let the delegate see what happened
+  // and tap Review to continue.
+}
+
+// ── BALLOT RENDERING ──────────────────────────────────────────────────────
+function ordinal(n) {
+  const s = ["th","st","nd","rd"];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+function renderBallot() {
+  const container = document.getElementById("candidates-container");
+  container.innerHTML = "";
+
+  shuffledCandidates.forEach(c => {
+    const row = document.createElement("div");
+    row.className = "candidate-row";
+    row.id = `row-${c.letter}`;
+
+    const numBadge = document.createElement("span");
+    numBadge.className   = "cand-number";
+    numBadge.textContent = c.letter;
+
+    const name = document.createElement("span");
+    name.className   = "cand-name";
+    name.textContent = c.name;
+
+    const sel = document.createElement("select");
+    sel.className = "rank-select";
+    sel.id        = `rank-${c.letter}`;
+    sel.setAttribute("aria-label", `Rank for ${c.name}`);
+
+    sel.appendChild(new Option("—", ""));
+    for (let r = 1; r <= shuffledCandidates.length; r++) {
+      sel.appendChild(new Option(ordinal(r), r));
+    }
+
+    if (currentRankings[c.letter]) {
+      sel.value = currentRankings[c.letter];
+      row.classList.add("ranked");
+    }
+
+    sel.addEventListener("change", () => onRankChange(c.letter, sel.value));
+
+    row.appendChild(numBadge);
+    row.appendChild(name);
+    row.appendChild(sel);
+    container.appendChild(row);
+  });
+
+  refreshCascade();
+}
+
+function onRankChange(candLetter, value) {
+  const rank = value ? parseInt(value, 10) : null;
+
+  // Release any other candidate that held this rank
+  if (rank !== null) {
+    for (const [cl, cr] of Object.entries(currentRankings)) {
+      if (cl !== candLetter && cr === rank) {
+        currentRankings[cl] = null;
+      }
+    }
+  }
+  currentRankings[candLetter] = rank;
+  refreshCascade();
+}
+
+function refreshCascade() {
+  const usedRanks = new Set(
+    Object.values(currentRankings).filter(v => v !== null)
+  );
+
+  shuffledCandidates.forEach(c => {
+    const sel = document.getElementById(`rank-${c.letter}`);
+    const row = document.getElementById(`row-${c.letter}`);
+    if (!sel) return;
+
+    const myRank = currentRankings[c.letter];
+    sel.value = myRank || "";
+    row.classList.toggle("ranked", myRank !== null);
+
+    Array.from(sel.options).forEach(opt => {
+      if (!opt.value) return;
+      const r = parseInt(opt.value);
+      opt.disabled = usedRanks.has(r) && r !== myRank;
+    });
+  });
+}
+
+// ── REVIEW ────────────────────────────────────────────────────────────────
+document.getElementById("btn-review").addEventListener("click", () => {
+  const list = document.getElementById("review-list");
+  list.innerHTML = "";
+
+  const ranked   = shuffledCandidates
+    .filter(c => currentRankings[c.letter])
+    .sort((a, b) => currentRankings[a.letter] - currentRankings[b.letter]);
+  const unranked = shuffledCandidates.filter(c => !currentRankings[c.letter]);
+
+  ranked.forEach(c => {
+    const li = document.createElement("li");
+    const badge = document.createElement("span");
+    badge.className   = "review-rank";
+    badge.textContent = ordinal(currentRankings[c.letter]);
+    li.appendChild(badge);
+    li.appendChild(document.createTextNode(` ${c.letter}. ${c.name}`));
+    list.appendChild(li);
+  });
+  unranked.forEach(c => {
+    const li = document.createElement("li");
+    const badge = document.createElement("span");
+    badge.className   = "review-rank unranked";
+    badge.textContent = "—";
+    li.appendChild(badge);
+    li.appendChild(document.createTextNode(` ${c.letter}. ${c.name} (not ranked)`));
+    list.appendChild(li);
+  });
+
+  show("screen-review");
+});
+
+document.getElementById("btn-back").addEventListener("click", () => show("screen-ballot"));
+
+// ── SUBMIT (practice only — no network call) ──────────────────────────────
+document.getElementById("btn-submit").addEventListener("click", () => {
+  clearInterval(countdownInterval);
+  show("screen-complete");
+});
+
+// ── PRACTICE AGAIN ────────────────────────────────────────────────────────
+document.getElementById("btn-again").addEventListener("click", () => {
+  document.getElementById("delegate-input").value = "";
+  document.getElementById("entry-error").textContent = "";
+  show("screen-entry");
+});
+</script>
+</body>
+</html>

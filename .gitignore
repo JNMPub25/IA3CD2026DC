@@ -1,0 +1,18 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Word temp/lock files
+~$*
+
+# Local planning docs — not part of the deployable system
+Local files for Convention/
+
+# Excel files — may contain sensitive delegate data
+*.xlsx
+*.xls
+
+# OS files
+.DS_Store
+Thumbs.db

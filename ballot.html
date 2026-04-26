@@ -1,0 +1,1433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>District 3 — Official Ballot</title>
+<style>
+/* ── Reset & base ─────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  height: 100%;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  font-size: 16px;
+  background: #f4f6f9;
+  color: #1a1a2e;
+}
+
+/* ── Screens ──────────────────────────────────────────────────────── */
+.screen { display: none; min-height: 100vh; flex-direction: column; align-items: center; padding: 1rem; }
+.screen.active { display: flex; }
+
+/* ── Test-mode banner ─────────────────────────────────────────────── */
+#test-banner {
+  display: none;
+  width: 100%; max-width: 600px;
+  background: #c0392b; color: #fff;
+  text-align: center; font-weight: 700; font-size: 0.9rem;
+  padding: 0.5rem; border-radius: 6px; margin-bottom: 0.75rem;
+  letter-spacing: 0.05em;
+}
+
+/* ── Card ─────────────────────────────────────────────────────────── */
+.card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.10);
+  padding: 2rem 1.5rem;
+  width: 100%; max-width: 560px;
+}
+
+/* ── Header ───────────────────────────────────────────────────────── */
+.ballot-header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+.convention-logo {
+  display: block;
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 0.5rem;
+}
+@media (max-width: 360px) {
+  .convention-logo { width: 44px; height: 44px; }
+}
+.ballot-header .org {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #555;
+  margin-bottom: 0.3rem;
+}
+.ballot-header h1 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #003366;
+  line-height: 1.25;
+}
+.ballot-header .date-line {
+  font-size: 0.78rem;
+  color: #666;
+  letter-spacing: 0.04em;
+  margin-top: 0.2rem;
+}
+.ballot-header .subtitle {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #003366;
+  margin-top: 0.35rem;
+}
+
+/* ── Phase / status bar ───────────────────────────────────────────── */
+#phase-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #eaf0fb;
+  border-radius: 8px;
+  padding: 0.6rem 1rem;
+  margin-bottom: 1.2rem;
+  font-size: 0.85rem;
+}
+#phase-label { font-weight: 600; color: #003366; }
+#countdown {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #c0392b;
+  font-variant-numeric: tabular-nums;
+  min-width: 5ch;
+  text-align: right;
+}
+#countdown.ok { color: #2ecc71; }
+
+/* ── Delegate info strip ──────────────────────────────────────────── */
+#delegate-strip {
+  font-size: 0.8rem;
+  color: #888;
+  text-align: right;
+  margin-bottom: 1rem;
+}
+
+/* ── Instructions ─────────────────────────────────────────────────── */
+.instructions {
+  font-size: 0.875rem;
+  color: #444;
+  background: #f8f9fa;
+  border-left: 3px solid #003366;
+  padding: 0.7rem 0.9rem;
+  border-radius: 0 6px 6px 0;
+  margin-bottom: 1.4rem;
+  line-height: 1.5;
+}
+
+/* ── Rank rows (ranked ballot) ────────────────────────────────────── */
+.rank-row {
+  display: flex;
+  align-items: center;
+  padding: 0.55rem 0.25rem;
+  border-bottom: 1px solid #eee;
+  gap: 0.75rem;
+}
+.rank-row:last-of-type { border-bottom: none; }
+.rank-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #003366;
+  min-width: 5.75rem;
+  flex-shrink: 0;
+}
+.rank-select {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: 1;
+  background: #f0f4fa url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23555'/%3E%3C/svg%3E") no-repeat right 0.6rem center / 10px;
+  border: 1px solid #bbc8dc;
+  border-radius: 6px;
+  padding: 0.45rem 1.8rem 0.45rem 0.65rem;
+  font-size: 0.9rem;
+  color: #1a1a2e;
+  cursor: pointer;
+  min-width: 0;
+}
+.rank-select:focus { outline: 2px solid #5b9bd5; }
+.rank-select option:disabled { color: #bbb; }
+.rank-counter {
+  font-size: 0.82rem;
+  color: #666;
+  text-align: center;
+  margin-top: 0.75rem;
+  padding: 0.4rem 0.75rem;
+  background: #f8f9fa;
+  border-radius: 6px;
+}
+
+/* ── Slate (committee) ballot ─────────────────────────────────────── */
+.slate-list { list-style: none; margin-bottom: 1.2rem; }
+.slate-list li {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #eee;
+  font-size: 0.95rem;
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+.slate-list li:last-child { border-bottom: none; }
+.slate-list li::before { content: "•"; color: #5b9bd5; font-size: 1.1rem; }
+.slate-vote-row {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 1rem;
+}
+.slate-btn {
+  flex: 1;
+  max-width: 180px;
+  padding: 0.9rem;
+  border: 2px solid #bbc8dc;
+  border-radius: 10px;
+  background: #f8f9fa;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.slate-btn.yes:hover, .slate-btn.yes.selected { background: #d4edda; border-color: #28a745; color: #155724; }
+.slate-btn.no:hover, .slate-btn.no.selected  { background: #f8d7da; border-color: #dc3545; color: #721c24; }
+.slate-btn:focus { outline: 2px solid #5b9bd5; }
+
+/* ── Buttons ──────────────────────────────────────────────────────── */
+.btn {
+  display: block;
+  width: 100%;
+  padding: 0.85rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+  margin-top: 1rem;
+}
+.btn-primary { background: #003366; color: #fff; }
+.btn-primary:hover:not(:disabled) { background: #004488; }
+.btn-secondary { background: #e8edf5; color: #003366; }
+.btn-secondary:hover { background: #dae3f0; }
+.btn-danger { background: #c0392b; color: #fff; }
+.btn-danger:hover:not(:disabled) { background: #a93226; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── Text input ───────────────────────────────────────────────────── */
+.text-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 1.1rem;
+  border: 2px solid #bbc8dc;
+  border-radius: 8px;
+  margin-top: 1rem;
+  text-align: center;
+  letter-spacing: 0.1em;
+}
+.text-input:focus { outline: none; border-color: #5b9bd5; }
+
+/* ── Review screen ────────────────────────────────────────────────── */
+.review-list { list-style: none; margin-bottom: 0.5rem; }
+.review-list li {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid #eee;
+  font-size: 0.95rem;
+  align-items: center;
+}
+.review-list li:last-child { border-bottom: none; }
+.review-rank {
+  background: #003366; color: #fff;
+  border-radius: 50%;
+  width: 1.8rem; height: 1.8rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 0.8rem; font-weight: 700; flex-shrink: 0;
+}
+.review-rank.unranked { background: #ccc; }
+.warning-box {
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 6px;
+  padding: 0.7rem 0.9rem;
+  font-size: 0.85rem;
+  color: #856404;
+  margin-top: 1rem;
+}
+
+/* ── Confirmation screen ──────────────────────────────────────────── */
+.confirm-check {
+  font-size: 4rem;
+  text-align: center;
+  margin: 1rem 0;
+}
+.confirm-code {
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+  background: #f0f4fa;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  letter-spacing: 0.08em;
+  text-align: center;
+  margin: 0.75rem 0;
+  color: #333;
+}
+.confirm-note { font-size: 0.82rem; color: #666; text-align: center; margin-top: 0.5rem; }
+
+/* ── Assisted-ballot mode ─────────────────────────────────────────────── */
+.assistant-banner {
+  background: #fffde7;
+  border: 1px solid #f9a825;
+  border-radius: 8px;
+  padding: 0.55rem 1rem;
+  margin-bottom: 0.9rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #5d4037;
+  text-align: center;
+}
+.assistant-banner .new-del-btn {
+  display: inline-block;
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #003366;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+.role-btn {
+  width: 100%;
+  padding: 1.1rem 1rem;
+  border: 2px solid #bbc8dc;
+  border-radius: 10px;
+  background: #f8f9fa;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-top: 0.75rem;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  line-height: 1.35;
+}
+.role-btn:hover { background: #eaf0fb; border-color: #5b9bd5; }
+.role-btn .role-icon { font-size: 1.5rem; flex-shrink: 0; }
+
+/* ── Runoff ballot (radio-button) ─────────────────────────────────── */
+.runoff-option {
+  display: flex;
+  align-items: center;
+  padding: 1rem 0.75rem;
+  border-radius: 8px;
+  border: 2px solid #e0e4ea;
+  margin-bottom: 0.75rem;
+  background: #fff;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  gap: 0.75rem;
+}
+.runoff-option:hover { background: #f5f8ff; border-color: #5b9bd5; }
+.runoff-option.selected { background: #eaf3ff; border-color: #003366; }
+.runoff-radio {
+  width: 1.3rem; height: 1.3rem;
+  flex-shrink: 0;
+  accent-color: #003366;
+  cursor: pointer;
+}
+.runoff-cand-name { flex: 1; font-size: 1.05rem; font-weight: 600; cursor: pointer; }
+
+/* ── Closed screen ────────────────────────────────────────────────── */
+#screen-closed { justify-content: center; }
+#screen-closed .card { text-align: center; }
+
+/* ── Spinner (submission) ─────────────────────────────────────────── */
+.spinner-wrap { text-align: center; padding: 2rem 0; }
+.spinner {
+  width: 42px; height: 42px;
+  border: 5px solid #e8edf5;
+  border-top-color: #003366;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 1rem;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Error message ────────────────────────────────────────────────── */
+.error-msg {
+  color: #c0392b;
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+  text-align: center;
+  min-height: 1.2em;
+}
+
+/* ── Saved indicator ──────────────────────────────────────────────── */
+#saved-indicator {
+  font-size: 0.75rem;
+  color: #28a745;
+  text-align: right;
+  margin-top: 0.25rem;
+  min-height: 1em;
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+#saved-indicator.visible { opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- ── TEST MODE BANNER ──────────────────────────────────────────────────── -->
+<div id="test-banner">⚠ TEST MODE — This is not an official ballot. Submissions go to the test sheet only. ⚠</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     SCREEN 1 — DELEGATE NUMBER ENTRY
+════════════════════════════════════════════════════════════════════════ -->
+<div id="screen-entry" class="screen active">
+  <div class="card" style="margin-top:3rem;">
+    <div class="ballot-header">
+      <img class="convention-logo" src="./3rd%20District%20Logo%20300dpi.png" alt="Iowa Democratic Party 3rd Congressional District">
+      <div class="org">Iowa Democratic Party</div>
+      <h1 id="entry-title">3rd Congressional District<br>Democratic Convention</h1>
+      <div class="date-line">May 2, 2026</div>
+      <div class="subtitle" id="entry-election-name"></div>
+    </div>
+
+    <!-- Assisted mode: shows who is helping -->
+    <div id="assistant-banner-entry" class="assistant-banner" style="display:none;">
+      Assisted by <span id="assistant-name-display-entry" style="font-weight:800;"></span>
+      <button class="new-del-btn" id="btn-new-delegate-entry">← New Delegate / New Ballot</button>
+    </div>
+
+    <p style="font-size:0.95rem;color:#444;margin-bottom:0.5rem;">
+      Enter your 4-digit ID number.
+    </p>
+    <div style="display:flex;align-items:stretch;gap:0;margin-top:1rem;">
+      <span id="id-prefix-badge" style="display:inline-flex;align-items:center;
+            font-size:1.1rem;font-weight:700;color:#003366;padding:0 0.9rem;
+            background:#e8edf5;border:2px solid #bbc8dc;border-right:none;
+            border-radius:8px 0 0 8px;white-space:nowrap;letter-spacing:0.05em;">D-</span>
+      <input id="delegate-input" class="text-input" type="text" inputmode="numeric"
+             maxlength="4" placeholder="0001"
+             autocomplete="off" autocorrect="off"
+             style="margin-top:0;border-radius:0 8px 8px 0;flex:1;text-align:center;">
+    </div>
+    <p style="font-size:0.82rem;color:#666;margin-top:0.4rem;text-align:center;">
+      Your full delegate ID: <strong id="entry-full-id">D-____</strong>
+    </p>
+    <div id="entry-error" class="error-msg"></div>
+    <button id="btn-begin" class="btn btn-primary" style="margin-top:1.2rem;">Begin Voting</button>
+
+    <div id="recovery-box" style="display:none;margin-top:1rem;padding:0.8rem;background:#fff3cd;
+         border:1px solid #ffc107;border-radius:8px;font-size:0.875rem;color:#856404;">
+      <strong>Saved ballot found.</strong> You started this ballot earlier. Would you like to continue?<br>
+      <div style="display:flex;gap:0.75rem;margin-top:0.6rem;">
+        <button id="btn-restore" class="btn btn-secondary" style="margin-top:0;">Continue saved ballot</button>
+        <button id="btn-fresh"   class="btn btn-secondary" style="margin-top:0;">Start fresh</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     SCREEN 2 — BALLOT
+════════════════════════════════════════════════════════════════════════ -->
+<div id="screen-ballot" class="screen">
+  <div id="test-banner-ballot" style="display:none;width:100%;max-width:560px;background:#c0392b;
+       color:#fff;text-align:center;font-weight:700;font-size:0.85rem;padding:0.4rem;
+       border-radius:6px;margin-bottom:0.5rem;letter-spacing:0.05em;">
+    ⚠ TEST MODE — Not an official ballot ⚠
+  </div>
+
+  <div class="card">
+    <div class="ballot-header">
+      <img class="convention-logo" src="./3rd%20District%20Logo%20300dpi.png" alt="Iowa Democratic Party 3rd Congressional District">
+      <div class="org">Iowa Democratic Party — 3rd Congressional District</div>
+      <h1 id="ballot-election-name"></h1>
+    </div>
+
+    <!-- Assisted mode: banner with name + new-ballot shortcut -->
+    <div id="assistant-banner-ballot" class="assistant-banner" style="display:none;">
+      Assisted by <span id="assistant-name-display-ballot" style="font-weight:800;"></span>
+      <button class="new-del-btn" id="btn-new-delegate-ballot">← New Delegate / New Ballot</button>
+    </div>
+
+    <div id="phase-bar">
+      <span id="phase-label">Voting Open</span>
+      <span id="countdown"></span>
+    </div>
+
+    <div id="delegate-strip"></div>
+
+    <div class="instructions" id="ballot-instructions"></div>
+
+    <!-- Ranked ballot candidates injected here -->
+    <div id="candidates-container"></div>
+
+    <!-- Slate vote UI injected here -->
+    <div id="slate-container" style="display:none;"></div>
+
+    <!-- Runoff vote UI injected here -->
+    <div id="runoff-container" style="display:none;"></div>
+
+    <div id="saved-indicator">✓ Progress saved</div>
+    <button id="btn-review" class="btn btn-primary">Review &amp; Submit</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     SCREEN 3 — REVIEW
+════════════════════════════════════════════════════════════════════════ -->
+<div id="screen-review" class="screen">
+  <div class="card" style="margin-top:1.5rem;">
+    <div class="ballot-header">
+      <h1>Review Your Ballot</h1>
+      <div class="subtitle" id="review-election-name"></div>
+    </div>
+
+    <ul id="review-list" class="review-list"></ul>
+
+    <div class="warning-box">
+      Once you submit, <strong>your ballot cannot be changed</strong>.
+      Please review your selections carefully before continuing.
+    </div>
+
+    <button id="btn-back"   class="btn btn-secondary">← Edit Ballot</button>
+    <button id="btn-submit" class="btn btn-danger">Submit Final Ballot</button>
+    <div id="submit-error" class="error-msg"></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     SCREEN 4 — SUBMITTING (spinner)
+════════════════════════════════════════════════════════════════════════ -->
+<div id="screen-submitting" class="screen" style="justify-content:center;">
+  <div class="card" style="text-align:center;">
+    <div class="spinner-wrap">
+      <div class="spinner"></div>
+      <p style="color:#555;font-size:0.95rem;">Submitting your ballot…</p>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     SCREEN 5 — CONFIRMATION
+════════════════════════════════════════════════════════════════════════ -->
+<div id="screen-confirm" class="screen" style="justify-content:center;">
+  <div class="card" style="text-align:center;">
+    <div class="confirm-check">✅</div>
+    <h2 style="color:#155724;margin-bottom:0.5rem;">Ballot Submitted</h2>
+    <p style="font-size:0.95rem;color:#444;margin-bottom:0.5rem;">
+      Your vote has been recorded for:
+    </p>
+    <p id="confirm-election-name" style="font-weight:700;color:#003366;font-size:1.05rem;
+       margin-bottom:1rem;"></p>
+    <div class="confirm-code" id="confirm-code"></div>
+    <p class="confirm-note">
+      If you experience any issues, show this screen to a convention official.
+    </p>
+    <div id="test-confirm-note" style="display:none;margin-top:1rem;padding:0.6rem;
+         background:#f8d7da;border-radius:6px;color:#721c24;font-size:0.85rem;font-weight:700;">
+      TEST SUBMISSION — This vote was not recorded officially.
+    </div>
+
+    <!-- Assisted mode: post-submit actions -->
+    <div id="assisted-confirm-btns" style="display:none;margin-top:1.25rem;border-top:1px solid #eee;padding-top:1.25rem;">
+      <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">What would you like to do next?</p>
+      <button id="btn-new-delegate-confirm" class="btn btn-primary">🗳️ New Delegate / New Ballot</button>
+      <button id="btn-done-assisting" class="btn btn-secondary" style="margin-top:0.5rem;">✓ Done Assisting</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     SCREEN 6 — VOTING CLOSED
+════════════════════════════════════════════════════════════════════════ -->
+<div id="screen-closed" class="screen">
+  <div class="card">
+    <div style="text-align:center;font-size:3rem;margin-bottom:0.75rem;">🔒</div>
+    <h2 style="text-align:center;color:#003366;margin-bottom:0.75rem;">Voting Has Closed</h2>
+    <p style="text-align:center;color:#555;font-size:0.95rem;">
+      The voting window for this ballot has ended.
+      If you believe this is an error, please see a convention official.
+    </p>
+    <div id="closed-autosave-note" style="display:none;margin-top:1rem;padding:0.7rem;
+         background:#fff3cd;border:1px solid #ffc107;border-radius:6px;font-size:0.85rem;
+         color:#856404;"></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     SCREEN 0 — ROLE SELECTION  (assisted mode only; ?mode=assisted)
+════════════════════════════════════════════════════════════════════════ -->
+<div id="screen-role" class="screen">
+  <div class="card" style="margin-top:3rem;">
+    <div class="ballot-header">
+      <img class="convention-logo" src="./3rd%20District%20Logo%20300dpi.png" alt="Iowa Democratic Party 3rd Congressional District">
+      <div class="org">Iowa Democratic Party</div>
+      <h1>3rd Congressional District<br>Democratic Convention</h1>
+      <div class="date-line">May 2, 2026</div>
+      <div class="subtitle" id="role-election-name"></div>
+    </div>
+    <p style="font-size:0.95rem;color:#444;margin-bottom:0.25rem;">
+      This is the <strong>committee-member ballot portal</strong>.<br>
+      How would you like to proceed?
+    </p>
+    <button id="btn-role-delegate" class="role-btn">
+      <span class="role-icon">🗳️</span>
+      <span>
+        <strong>Vote My Own Ballot</strong><br>
+        <span style="font-size:0.85rem;font-weight:400;color:#555;">I am a delegate and want to cast my own vote first</span>
+      </span>
+    </button>
+    <button id="btn-role-assistant" class="role-btn">
+      <span class="role-icon">🤝</span>
+      <span>
+        <strong>Not a Delegate — Assist Others</strong><br>
+        <span style="font-size:0.85rem;font-weight:400;color:#555;">I will help delegates without a device submit their ballots</span>
+      </span>
+    </button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     SCREEN A — ASSISTANT NAME ENTRY
+════════════════════════════════════════════════════════════════════════ -->
+<div id="screen-assistant-name" class="screen">
+  <div class="card" style="margin-top:3rem;">
+    <div class="ballot-header">
+      <div class="org">Iowa Democratic Party</div>
+      <h1>Ballot Assistant</h1>
+      <div class="subtitle">Identify yourself before assisting delegates</div>
+    </div>
+    <p style="font-size:0.95rem;color:#444;margin-bottom:0.5rem;">
+      Enter your name below. It will appear on every assisted ballot you submit and will be recorded in the CSV for audit purposes.
+    </p>
+    <input id="assistant-name-input" class="text-input" type="text"
+           placeholder="Last, First" autocomplete="name" style="letter-spacing:0;">
+    <div id="assistant-name-error" class="error-msg"></div>
+    <button id="btn-start-assisting" class="btn btn-primary" style="margin-top:1.2rem;">
+      Start Assisting →
+    </button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     SCREEN AO — AFTER OWN BALLOT: ASSIST OTHERS OR DONE
+════════════════════════════════════════════════════════════════════════ -->
+<div id="screen-after-own" class="screen" style="justify-content:center;">
+  <div class="card" style="text-align:center;">
+    <div class="confirm-check">✅</div>
+    <h2 style="color:#155724;margin-bottom:0.5rem;">Your Ballot Was Submitted</h2>
+    <p style="font-size:0.95rem;color:#444;margin-bottom:1.5rem;">
+      Would you like to assist other delegates who need help?
+    </p>
+    <button id="btn-assist-after-own" class="btn btn-primary">🤝 Assist Others</button>
+    <button id="btn-done-after-own"  class="btn btn-secondary" style="margin-top:0.5rem;">✓ I'm Done</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════════════════════════════════════════════ -->
+<script>
+"use strict";
+
+// ── CONFIGURATION ────────────────────────────────────────────────────────
+// Replace these URLs with your actual Apps Script deployment URLs.
+// To set up: see apps_script.js in your project folder.
+const CONFIG = {
+  APPS_SCRIPT_URL:      "https://script.google.com/macros/s/REPLACE_WITH_PRODUCTION_ID/exec",
+  TEST_APPS_SCRIPT_URL: "https://script.google.com/macros/s/REPLACE_WITH_TEST_ID/exec",
+};
+
+// ── PARSE URL PARAMETERS ─────────────────────────────────────────────────
+const params     = new URLSearchParams(window.location.search);
+const ELECTION   = params.get("election")   || "";    // e.g. "scc-w"
+const SEATS      = parseInt(params.get("seats") || "1", 10);
+const DEADLINE   = params.get("deadline")   || null;  // ISO timestamp for Phase 2
+const IS_TEST     = params.get("test") === "1";
+const IS_ASSISTED = params.get("mode") === "assisted";  // committee-member assisted ballot URL
+const BALLOT_TYPE = params.get("type") === "slate"  ? "slate"  :
+                    params.get("type") === "runoff" ? "runoff" : "ranked";
+
+// Parse candidates:  "A-Jane%20Smith-B-Maria%20Garcia-..."
+// Each pair: letter-name, separated by "-" (names may contain spaces encoded as %20)
+const CANDIDATES = (() => {
+  const raw = params.get("candidates") || "";
+  if (!raw) return [];
+  const out = [];
+  // Format: letter-name pairs joined by "-" but names may have encoded chars
+  // We split on "-([A-Za-z])-" pattern to find letter boundaries
+  const parts = decodeURIComponent(raw).split(/-(?=[A-Za-z]-)/);
+  for (const part of parts) {
+    const dash = part.indexOf("-");
+    if (dash === -1) continue;
+    const letter = part.slice(0, dash).trim().toUpperCase();
+    const name   = part.slice(dash + 1).trim();
+    if (letter && name) out.push({ letter, name });
+  }
+  return out;
+})();
+
+const ELECTION_LABELS = {
+  "scc-w":   "SCC — Women (Ranked Choice)",
+  "scc-m":   "SCC — Men / Non-Binary (Ranked Choice)",
+  "dei":     "DEI Committee Chair (Ranked Choice)",
+  "scc-com": "State Convention Committee (Slate Vote)",
+};
+const ELECTION_BASE = {
+  "scc-w":   "SCC — Women",
+  "scc-m":   "SCC — Men / Non-Binary",
+  "dei":     "DEI Committee Chair",
+  "scc-com": "State Convention Committee",
+};
+const ELECTION_LABEL = BALLOT_TYPE === "runoff"
+  ? "Runoff — " + (ELECTION_BASE[ELECTION] || "Official Ballot")
+  : (ELECTION_LABELS[ELECTION] || "Official Ballot");
+
+// ── STATE ────────────────────────────────────────────────────────────────
+let delegateNumber     = "";
+let delegatePrefix     = "D-";  // always D- (no alternates)
+let delegateStatus     = "delegate";  // always delegate
+let shuffledCandidates = [];  // order shown on this ballot
+let currentRankings    = {};  // { candidateLetter: rank (1-based) | null }
+let slateVote          = null;  // "yes" | "no" | null
+let runoffChoice       = null;  // candidate letter (string) | null  — for ?type=runoff
+let submitted          = false;
+let countdownInterval  = null;
+
+// Assisted-ballot state
+let assistantName      = "";   // name of the committee member assisting
+let isAssistingOthers  = false; // true once we're in the assist-others flow
+
+// ── SCREEN HELPERS ───────────────────────────────────────────────────────
+function show(screenId) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById(screenId).classList.add("active");
+  window.scrollTo(0, 0);
+}
+
+// ── TEST MODE SETUP ──────────────────────────────────────────────────────
+if (IS_TEST) {
+  document.getElementById("test-banner").style.display = "block";
+  document.getElementById("test-banner-ballot").style.display = "block";
+}
+
+// ── ASSISTED BALLOT MODE ─────────────────────────────────────────────────
+
+/** Show / update the yellow assistant banners on entry and ballot screens. */
+function showAssistantBanners() {
+  const name = assistantName || "Committee Member";
+  document.getElementById("assistant-name-display-entry").textContent   = name;
+  document.getElementById("assistant-name-display-ballot").textContent  = name;
+  document.getElementById("assistant-banner-entry").style.display    = "block";
+  document.getElementById("assistant-banner-ballot").style.display   = "block";
+}
+
+/** Reset per-delegate state so the assistant can help the next person. */
+function resetForNewDelegate() {
+  delegateNumber  = "";
+  // delegatePrefix and delegateStatus always stay "D-" / "delegate".
+  currentRankings = {};
+  slateVote       = null;
+  runoffChoice    = null;
+  submitted       = false;
+  clearInterval(countdownInterval);
+  countdownInterval = null;
+
+  const inp = document.getElementById("delegate-input");
+  if (inp) { inp.value = ""; }
+  const errEl = document.getElementById("entry-error");
+  if (errEl) { errEl.textContent = ""; }
+  const recBox = document.getElementById("recovery-box");
+  if (recBox) { recBox.style.display = "none"; }
+  const fullIdEl = document.getElementById("entry-full-id");
+  if (fullIdEl) { fullIdEl.textContent = "____"; }
+
+  // Hide the assisted confirm buttons in case we're returning from confirm
+  document.getElementById("assisted-confirm-btns").style.display = "none";
+}
+
+// ─── Role screen buttons ───────────────────────────────────────────────────
+document.getElementById("btn-role-delegate").addEventListener("click", () => {
+  // This committee member IS a delegate — let them identify type then vote.
+  isAssistingOthers = false;
+  show("screen-entry");
+});
+
+document.getElementById("btn-role-assistant").addEventListener("click", () => {
+  // Not a delegate — go straight to name entry.
+  isAssistingOthers = true;
+  show("screen-assistant-name");
+});
+
+// ─── Assistant name entry ──────────────────────────────────────────────────
+document.getElementById("btn-start-assisting").addEventListener("click", startAssisting);
+document.getElementById("assistant-name-input").addEventListener("keydown", e => {
+  if (e.key === "Enter") startAssisting();
+});
+
+function startAssisting() {
+  const name = document.getElementById("assistant-name-input").value.trim();
+  if (!name) {
+    document.getElementById("assistant-name-error").textContent = "Please enter your name.";
+    return;
+  }
+  document.getElementById("assistant-name-error").textContent = "";
+  assistantName = name;
+  showAssistantBanners();
+  resetForNewDelegate();
+  show("screen-entry");
+}
+
+// ─── "New Delegate / New Ballot" buttons (entry screen & ballot screen) ────
+function handleNewDelegate() {
+  if (isAssistingOthers) {
+    resetForNewDelegate();
+    show("screen-entry");
+  }
+}
+
+document.getElementById("btn-new-delegate-entry").addEventListener("click", handleNewDelegate);
+
+document.getElementById("btn-new-delegate-ballot").addEventListener("click", () => {
+  const ok = confirm("Start a new ballot? The current delegate's unsubmitted selections will be lost.");
+  if (ok) handleNewDelegate();
+});
+
+// ─── Post-submit: new ballot or done (from screen-confirm in assisted mode) ─
+document.getElementById("btn-new-delegate-confirm").addEventListener("click", () => {
+  resetForNewDelegate();
+  show("screen-entry");
+});
+
+document.getElementById("btn-done-assisting").addEventListener("click", () => {
+  // Replace card content with a simple "all done" message.
+  const card = document.querySelector("#screen-confirm .card");
+  card.innerHTML = `
+    <div class="confirm-check">👍</div>
+    <h2 style="color:#003366;margin-bottom:0.5rem;">All Done — Thank You!</h2>
+    <p style="font-size:0.95rem;color:#555;">
+      Your assistance has been recorded.<br>You may close this window.
+    </p>`;
+});
+
+// ─── After own ballot: assist others or done ───────────────────────────────
+document.getElementById("btn-assist-after-own").addEventListener("click", () => {
+  isAssistingOthers = true;
+  // Pre-fill name input if already entered, otherwise go to name entry.
+  if (assistantName) {
+    showAssistantBanners();
+    resetForNewDelegate();
+    show("screen-entry");
+  } else {
+    show("screen-assistant-name");
+  }
+});
+
+document.getElementById("btn-done-after-own").addEventListener("click", () => {
+  document.querySelector("#screen-after-own .card").innerHTML = `
+    <div class="confirm-check">👍</div>
+    <h2 style="color:#003366;margin-bottom:0.5rem;">All Done — Thank You!</h2>
+    <p style="font-size:0.95rem;color:#555;">
+      You may close this window.
+    </p>`;
+});
+
+// ── LIVE ID PREVIEW ──────────────────────────────────────────────────────
+// (Delegate type is always D- — type-selection screen removed)
+
+// Live ID preview as delegate types their number
+document.getElementById("delegate-input").addEventListener("input", function() {
+  // Strip non-digits and enforce max 4
+  const cleaned = this.value.replace(/\D/g, "").slice(0, 4);
+  if (this.value !== cleaned) { this.value = cleaned; }
+  const preview = cleaned ? delegatePrefix + cleaned.padStart(4, "0") : delegatePrefix + "____";
+  const el = document.getElementById("entry-full-id");
+  if (el) { el.textContent = preview; }
+});
+
+// ── SEEDED PRNG (mulberry32) ─────────────────────────────────────────────
+function mulberry32(seed) {
+  return function() {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+function hashStr(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    h = Math.imul(31, h) + str.charCodeAt(i) | 0;
+  }
+  return Math.abs(h);
+}
+
+function seededShuffle(arr, seed) {
+  const rng      = mulberry32(seed);
+  const shuffled = [...arr];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+// ── LOCALSTORAGE ─────────────────────────────────────────────────────────
+function lsKey(delNum) {
+  return `d3_ballot_${ELECTION}_${delNum}`;
+}
+
+function saveProgress(delNum) {
+  const data = {
+    rankings:       currentRankings,
+    slateVote,
+    runoffChoice,
+    savedAt:        new Date().toISOString(),
+    delegateNumber: delNum,
+    electionKey:    ELECTION,
+    delegateStatus,
+    delegatePrefix,
+  };
+  try {
+    localStorage.setItem(lsKey(delNum), JSON.stringify(data));
+  } catch(e) { /* storage full / private mode */ }
+  // Show "saved" flash
+  const ind = document.getElementById("saved-indicator");
+  ind.classList.add("visible");
+  setTimeout(() => ind.classList.remove("visible"), 2000);
+}
+
+function loadSaved(delNum) {
+  try {
+    const raw = localStorage.getItem(lsKey(delNum));
+    return raw ? JSON.parse(raw) : null;
+  } catch(e) { return null; }
+}
+
+function clearSaved(delNum) {
+  try { localStorage.removeItem(lsKey(delNum)); } catch(e) {}
+}
+
+// ── PHASE & COUNTDOWN ────────────────────────────────────────────────────
+function setupPhase() {
+  if (!DEADLINE) {
+    document.getElementById("phase-label").textContent = "Voting Open";
+    document.getElementById("countdown").textContent = "";
+    return;
+  }
+
+  const deadline = new Date(DEADLINE);
+
+  function tick() {
+    const now   = new Date();
+    const msLeft = deadline - now;
+
+    if (msLeft <= 0) {
+      clearInterval(countdownInterval);
+      document.getElementById("phase-label").textContent = "Voting Closed";
+      document.getElementById("countdown").textContent   = "0:00";
+      if (!submitted) {
+        saveProgress(delegateNumber);
+        autoSubmitOnClose();
+      }
+      return;
+    }
+
+    const mins = Math.floor(msLeft / 60000);
+    const secs = Math.floor((msLeft % 60000) / 1000);
+    const label = `${mins}:${String(secs).padStart(2, "0")}`;
+
+    document.getElementById("phase-label").textContent  = "Time Remaining";
+    const el = document.getElementById("countdown");
+    el.textContent = label;
+    el.className   = msLeft > 120000 ? "ok" : "";  // red when < 2 min
+  }
+
+  tick();
+  countdownInterval = setInterval(tick, 1000);
+}
+
+async function autoSubmitOnClose() {
+  // Disable all inputs
+  document.querySelectorAll(".rank-select, .slate-btn").forEach(el => {
+    el.disabled = true;
+  });
+  document.getElementById("btn-review").disabled = true;
+
+  const note = document.getElementById("closed-autosave-note");
+  note.style.display = "block";
+
+  // Try to auto-submit if there are selections
+  const hasSelections = BALLOT_TYPE === "slate"
+    ? slateVote !== null
+    : BALLOT_TYPE === "runoff"
+    ? runoffChoice !== null
+    : Object.values(currentRankings).some(v => v !== null);
+
+  if (hasSelections) {
+    note.textContent = "Voting window closed. Submitting your saved selections automatically…";
+    try {
+      await doSubmit(true);
+      note.textContent = "✓ Your ballot was auto-submitted when the voting window closed.";
+    } catch(e) {
+      note.textContent = "The voting window has closed. Your selections were saved but could not be submitted automatically. Please see a convention official.";
+    }
+    show("screen-closed");
+  } else {
+    note.textContent = "The voting window has closed. No selections were recorded for your ballot.";
+    show("screen-closed");
+  }
+}
+
+// ── BALLOT RENDERING — RANKED ─────────────────────────────────────────────
+function renderRankedBallot() {
+  const container = document.getElementById("candidates-container");
+  container.innerHTML = "";
+
+  // Initialize rankings for all candidates
+  shuffledCandidates.forEach(c => {
+    if (currentRankings[c.letter] === undefined) currentRankings[c.letter] = null;
+  });
+
+  const n = shuffledCandidates.length;
+
+  // One row per rank position (1st choice through Nth choice).
+  // Candidate order in each dropdown is seeded per delegate — same order
+  // across all dropdowns on one ballot, different order per delegate.
+  for (let rank = 1; rank <= n; rank++) {
+    const row = document.createElement("div");
+    row.className = "rank-row";
+    row.id = `rank-row-${rank}`;
+
+    const label = document.createElement("span");
+    label.className = "rank-label";
+    label.textContent = `${ordinal(rank)} choice`;
+
+    const sel = document.createElement("select");
+    sel.className = "rank-select";
+    sel.id = `rank-pos-${rank}`;
+    sel.setAttribute("aria-label", `${ordinal(rank)} choice`);
+
+    // Top blank option
+    sel.appendChild(new Option("— Select or leave blank —", ""));
+
+    // Candidates in this delegate's shuffled order: "A — Name"
+    shuffledCandidates.forEach(c => {
+      sel.appendChild(new Option(`${c.letter} — ${c.name}`, c.letter));
+    });
+
+    // Bottom visual separator (disabled, not selectable)
+    const sep = document.createElement("option");
+    sep.value = "";
+    sep.textContent = "—";
+    sep.disabled = true;
+    sel.appendChild(sep);
+
+    // Restore saved value if this rank is already assigned
+    const currentCand = Object.keys(currentRankings).find(k => currentRankings[k] === rank);
+    if (currentCand) sel.value = currentCand;
+
+    sel.addEventListener("change", () => onRankPositionChange(rank, sel.value));
+
+    row.appendChild(label);
+    row.appendChild(sel);
+    container.appendChild(row);
+  }
+
+  // "X of N candidates ranked" counter
+  const counter = document.createElement("div");
+  counter.className = "rank-counter";
+  counter.id = "rank-counter";
+  container.appendChild(counter);
+
+  refreshCascade();
+}
+
+function ordinal(n) {
+  const s = ["th","st","nd","rd"];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+function onRankPositionChange(rank, candidateLetter) {
+  // Clear the previous holder of this rank position
+  for (const [cl, cr] of Object.entries(currentRankings)) {
+    if (cr === rank) currentRankings[cl] = null;
+  }
+  // Clear this candidate from any rank it previously held
+  if (candidateLetter && currentRankings[candidateLetter] !== undefined) {
+    currentRankings[candidateLetter] = null;
+  }
+  // Assign candidate to this rank (empty string = leave blank)
+  if (candidateLetter) {
+    currentRankings[candidateLetter] = rank;
+  }
+
+  refreshCascade();
+  saveProgress(delegateNumber);
+}
+
+function refreshCascade() {
+  const n = shuffledCandidates.length;
+
+  // Build rank→candidate map and set of all ranked candidate letters
+  const rankToCand = {};
+  const rankedLetters = new Set();
+  for (const [cl, r] of Object.entries(currentRankings)) {
+    if (r !== null) { rankToCand[r] = cl; rankedLetters.add(cl); }
+  }
+
+  for (let rank = 1; rank <= n; rank++) {
+    const sel = document.getElementById(`rank-pos-${rank}`);
+    if (!sel) continue;
+
+    const currentVal = rankToCand[rank] || "";
+    sel.value = currentVal;
+
+    // Disable options for candidates already ranked in another position
+    Array.from(sel.options).forEach(opt => {
+      if (!opt.value || opt.disabled) return;
+      opt.disabled = rankedLetters.has(opt.value) && opt.value !== currentVal;
+    });
+  }
+
+  // Update counter
+  const counter = document.getElementById("rank-counter");
+  if (counter) {
+    const count = rankedLetters.size;
+    counter.textContent = `${count} of ${n} candidate${n !== 1 ? "s" : ""} ranked`;
+  }
+}
+
+// ── BALLOT RENDERING — SLATE ──────────────────────────────────────────────
+function renderSlateBallot() {
+  document.getElementById("candidates-container").style.display = "none";
+  const container = document.getElementById("slate-container");
+  container.style.display = "block";
+  container.innerHTML = "";
+
+  const h = document.createElement("h3");
+  h.textContent = "Nominees on this Slate";
+  h.style.cssText = "font-size:1rem;color:#003366;margin-bottom:0.75rem;";
+  container.appendChild(h);
+
+  const ul = document.createElement("ul");
+  ul.className = "slate-list";
+  CANDIDATES.forEach(c => {
+    const li = document.createElement("li");
+    li.textContent = `${c.letter}. ${c.name}`;
+    ul.appendChild(li);
+  });
+  container.appendChild(ul);
+
+  const voteLabel = document.createElement("p");
+  voteLabel.style.cssText = "text-align:center;font-weight:600;color:#444;margin-bottom:0.5rem;font-size:0.9rem;";
+  voteLabel.textContent = "Vote for or against the slate as a whole:";
+  container.appendChild(voteLabel);
+
+  const row = document.createElement("div");
+  row.className = "slate-vote-row";
+
+  ["yes", "no"].forEach(v => {
+    const btn = document.createElement("button");
+    btn.className = `slate-btn ${v}`;
+    btn.textContent = v === "yes" ? "✓  YES" : "✗  NO";
+    btn.id = `slate-${v}`;
+    if (slateVote === v) btn.classList.add("selected");
+    btn.addEventListener("click", () => {
+      slateVote = v;
+      document.getElementById("slate-yes").classList.toggle("selected", v === "yes");
+      document.getElementById("slate-no").classList.toggle("selected",  v === "no");
+      saveProgress(delegateNumber);
+    });
+    row.appendChild(btn);
+  });
+  container.appendChild(row);
+}
+
+// ── BALLOT RENDERING — RUNOFF ─────────────────────────────────────────────
+function renderRunoffBallot() {
+  document.getElementById("candidates-container").style.display = "none";
+  document.getElementById("slate-container").style.display     = "none";
+  const container = document.getElementById("runoff-container");
+  container.style.display = "block";
+  container.innerHTML = "";
+
+  CANDIDATES.forEach(c => {
+    const label = document.createElement("label");
+    label.className = "runoff-option";
+    label.htmlFor   = `runoff-${c.letter}`;
+    if (runoffChoice === c.letter) label.classList.add("selected");
+
+    const radio = document.createElement("input");
+    radio.type      = "radio";
+    radio.name      = "runoff";
+    radio.id        = `runoff-${c.letter}`;
+    radio.value     = c.letter;
+    radio.className = "runoff-radio";
+    if (runoffChoice === c.letter) radio.checked = true;
+
+    radio.addEventListener("change", () => {
+      runoffChoice = c.letter;
+      document.querySelectorAll(".runoff-option").forEach(el => el.classList.remove("selected"));
+      label.classList.add("selected");
+      saveProgress(delegateNumber);
+    });
+
+    const numBadge = document.createElement("span");
+    numBadge.className   = "cand-number";
+    numBadge.textContent = c.letter;
+
+    const name = document.createElement("span");
+    name.className   = "runoff-cand-name";
+    name.textContent = c.name;
+
+    label.appendChild(radio);
+    label.appendChild(numBadge);
+    label.appendChild(name);
+    container.appendChild(label);
+  });
+}
+
+// ── ENTRY SCREEN LOGIC ────────────────────────────────────────────────────
+document.getElementById("entry-election-name").textContent = ELECTION_LABEL;
+document.getElementById("btn-begin").addEventListener("click", beginVoting);
+document.getElementById("delegate-input").addEventListener("keydown", e => {
+  if (e.key === "Enter") beginVoting();
+});
+
+function beginVoting() {
+  const raw = document.getElementById("delegate-input").value.trim();
+  if (!raw || !/^\d{1,4}$/.test(raw)) {
+    document.getElementById("entry-error").textContent = "Please enter your 1–4 digit number.";
+    return;
+  }
+  if (!delegatePrefix) {
+    document.getElementById("entry-error").textContent =
+      "Please go back and select Delegate or Seated Alternate.";
+    return;
+  }
+  document.getElementById("entry-error").textContent = "";
+
+  const paddedNum  = raw.padStart(4, "0");
+  delegateNumber   = delegatePrefix + paddedNum;
+
+  // Check for saved progress
+  const saved = loadSaved(delegateNumber);
+  if (saved && !submitted) {
+    document.getElementById("recovery-box").style.display = "block";
+    document.getElementById("btn-restore").onclick = () => {
+      currentRankings = saved.rankings || {};
+      slateVote       = saved.slateVote   || null;
+      runoffChoice    = saved.runoffChoice || null;
+      // Restore type state in case page was refreshed
+      if (saved.delegateStatus) delegateStatus = saved.delegateStatus;
+      if (saved.delegatePrefix) delegatePrefix = saved.delegatePrefix;
+      openBallot();
+    };
+    document.getElementById("btn-fresh").onclick = () => {
+      clearSaved(delegateNumber);
+      currentRankings = {};
+      slateVote = null;
+      openBallot();
+    };
+  } else {
+    openBallot();
+  }
+}
+
+function openBallot() {
+  // Check if voting is already closed
+  if (DEADLINE && new Date(DEADLINE) < new Date()) {
+    show("screen-closed");
+    return;
+  }
+
+  shuffledCandidates = seededShuffle(CANDIDATES, hashStr(delegateNumber + ELECTION));
+  document.getElementById("ballot-election-name").textContent = ELECTION_LABEL;
+  document.getElementById("delegate-strip").textContent = `Delegate ${delegateNumber}`;
+  document.getElementById("ballot-instructions").innerHTML =
+    BALLOT_TYPE === "runoff"
+      ? `Which candidate do you approve? <strong>Select one.</strong>`
+      : BALLOT_TYPE === "slate"
+      ? `Vote <strong>YES</strong> or <strong>NO</strong> for the slate as a whole.`
+      : `Rank the candidates in order of preference. <strong>1st</strong> = your top choice.
+         You may rank as many or as few candidates as you like.
+         Use the dropdowns to assign a rank to each candidate you wish to vote for.
+         Leave a candidate blank to skip them.`;
+
+  if (BALLOT_TYPE === "slate") {
+    renderSlateBallot();
+  } else if (BALLOT_TYPE === "runoff") {
+    renderRunoffBallot();
+  } else {
+    renderRankedBallot();
+  }
+
+  setupPhase();
+
+  // Auto-save every 30 seconds
+  setInterval(() => {
+    if (!submitted) saveProgress(delegateNumber);
+  }, 30000);
+
+  show("screen-ballot");
+}
+
+// ── REVIEW ────────────────────────────────────────────────────────────────
+document.getElementById("btn-review").addEventListener("click", () => {
+  document.getElementById("review-election-name").textContent = ELECTION_LABEL;
+
+  const list = document.getElementById("review-list");
+  list.innerHTML = "";
+
+  if (BALLOT_TYPE === "runoff") {
+    const selected = CANDIDATES.find(c => c.letter === runoffChoice);
+    const li = document.createElement("li");
+    const badge = document.createElement("span");
+    badge.className = "review-rank";
+    badge.style.background = runoffChoice ? "#003366" : "#ccc";
+    badge.textContent = runoffChoice ? "✓" : "—";
+    li.appendChild(badge);
+    li.appendChild(document.createTextNode(
+      selected ? `  ${selected.letter}. ${selected.name}` : "  (no selection made)"
+    ));
+    list.appendChild(li);
+  } else if (BALLOT_TYPE === "slate") {
+    const li = document.createElement("li");
+    const badge = document.createElement("span");
+    badge.className = "review-rank";
+    badge.textContent = slateVote ? slateVote.toUpperCase() : "—";
+    badge.style.background = slateVote === "yes" ? "#28a745" : slateVote === "no" ? "#c0392b" : "#ccc";
+    li.appendChild(badge);
+    li.appendChild(document.createTextNode(" Vote on slate"));
+    list.appendChild(li);
+  } else {
+    // Sort by rank for display; unranked at bottom
+    const ranked   = shuffledCandidates
+      .filter(c => currentRankings[c.letter])
+      .sort((a, b) => currentRankings[a.letter] - currentRankings[b.letter]);
+    const unranked = shuffledCandidates.filter(c => !currentRankings[c.letter]);
+
+    ranked.forEach(c => {
+      const li = document.createElement("li");
+      const badge = document.createElement("span");
+      badge.className = "review-rank";
+      badge.textContent = ordinal(currentRankings[c.letter]);
+      li.appendChild(badge);
+      li.appendChild(document.createTextNode(` ${c.letter}. ${c.name}`));
+      list.appendChild(li);
+    });
+    unranked.forEach(c => {
+      const li = document.createElement("li");
+      const badge = document.createElement("span");
+      badge.className = "review-rank unranked";
+      badge.textContent = "—";
+      li.appendChild(badge);
+      li.appendChild(document.createTextNode(` ${c.letter}. ${c.name} (not ranked)`));
+      list.appendChild(li);
+    });
+  }
+
+  show("screen-review");
+});
+
+document.getElementById("btn-back").addEventListener("click", () => show("screen-ballot"));
+
+// ── SUBMIT ────────────────────────────────────────────────────────────────
+document.getElementById("btn-submit").addEventListener("click", async () => {
+  document.getElementById("submit-error").textContent = "";
+  show("screen-submitting");
+  try {
+    await doSubmit(false);
+    finishSubmit();
+  } catch (err) {
+    show("screen-review");
+    document.getElementById("submit-error").textContent =
+      "Submission failed. Please try again or see a convention official. (" + err.message + ")";
+  }
+});
+
+async function doSubmit(isAuto) {
+  const payload = {
+    delegateNumber,
+    delegateStatus,
+    electionKey:   ELECTION,
+    electionLabel: ELECTION_LABEL,
+    ballotType:    BALLOT_TYPE,
+    timestamp:     new Date().toISOString(),
+    isAutoSubmit:  isAuto,
+    isTest:        IS_TEST,
+    rankings:      BALLOT_TYPE === "ranked" ? currentRankings : null,
+    slateVote:     BALLOT_TYPE === "slate"  ? slateVote       : null,
+    choice:        BALLOT_TYPE === "runoff" ? runoffChoice     : null,
+    assistedBy:    (IS_ASSISTED && isAssistingOthers && assistantName) ? assistantName : null,
+  };
+
+  const url = IS_TEST ? CONFIG.TEST_APPS_SCRIPT_URL : CONFIG.APPS_SCRIPT_URL;
+  await fetch(url, {
+    method:  "POST",
+    headers: { "Content-Type": "application/json" },
+    body:    JSON.stringify(payload),
+    mode:    "no-cors",
+  });
+}
+
+function finishSubmit() {
+  submitted = true;
+  clearSaved(delegateNumber);
+  clearInterval(countdownInterval);
+
+  const code = `${delegateNumber}-${ELECTION.toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
+
+  if (IS_ASSISTED && !isAssistingOthers) {
+    show("screen-after-own");
+    return;
+  }
+
+  document.getElementById("confirm-election-name").textContent = ELECTION_LABEL;
+  document.getElementById("confirm-code").textContent = `Confirmation: ${code}`;
+  if (IS_TEST) document.getElementById("test-confirm-note").style.display = "block";
+
+  if (IS_ASSISTED && isAssistingOthers) {
+    document.getElementById("assisted-confirm-btns").style.display = "block";
+  }
+
+  show("screen-confirm");
+}
+
+// ── GUARD: no candidates in URL ───────────────────────────────────────────
+window.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("entry-election-name").textContent = ELECTION_LABEL;
+
+  if (!ELECTION || CANDIDATES.length === 0) {
+    show("screen-entry");
+    document.getElementById("entry-election-name").textContent =
+      "⚠ No ballot loaded. Please scan the QR code or use the link provided by convention staff.";
+    document.getElementById("btn-begin").disabled = true;
+    document.getElementById("delegate-input").disabled = true;
+    return;
+  }
+
+  if (IS_ASSISTED) {
+    document.getElementById("role-election-name").textContent = ELECTION_LABEL;
+    show("screen-role");
+    return;
+  }
+
+  // Normal mode: screen-entry is already active by default in HTML.
+});
+</script>
+</body>
+</html>
