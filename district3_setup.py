@@ -62,8 +62,8 @@ ELECTIONS = {
 
 # ── QR / URL base ─────────────────────────────────────────────────────────
 # Replace with your actual GitHub Pages URL once the ballot is deployed.
-BALLOT_BASE_URL   = "https://YOUR-ORG.github.io/district3-ballot/ballot.html"
-PRACTICE_BASE_URL = "https://YOUR-ORG.github.io/district3-ballot/practice_ballot.html"
+BALLOT_BASE_URL   = "https://jnmpub25.github.io/IA3CD2026DC/ballot.html"
+PRACTICE_BASE_URL = "https://jnmpub25.github.io/IA3CD2026DC/practice_ballot.html"
 
 # Fictional candidates shown in the practice ballot (must match practice_ballot.html)
 PRACTICE_CANDIDATES = [
