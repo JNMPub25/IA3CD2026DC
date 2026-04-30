@@ -598,21 +598,20 @@ function runFullTabulation(ballots, cKeys, seats, electionType) {
       if (seatRound === 1) {
         // Step A: 15% threshold
         const belowThreshold = seatActive.filter(k => voteCounts[k] < thresholdVotes);
-        if (belowThreshold.length > 0 && (seatActive.length - belowThreshold.length) >= 2) {
-          toEliminate = belowThreshold;
-          elimReason = `Below ${(ELIM_THRESHOLD*100).toFixed(0)}% threshold`;
-        } else if (belowThreshold.length > 0) {
-          // Can't eliminate all below threshold — would leave < 2
-          // Eliminate as many as possible while keeping >= 2
-          const byVotes = belowThreshold.sort((a,b) => voteCounts[a] - voteCounts[b]);
-          toEliminate = [];
-          for (const k of byVotes) {
-            if (seatActive.length - toEliminate.length - 1 >= 2) {
-              toEliminate.push(k);
-            } else break;
-          }
-          if (toEliminate.length > 0) {
-            elimReason = `Below ${(ELIM_THRESHOLD*100).toFixed(0)}% threshold (capped to keep ≥2)`;
+        if (belowThreshold.length > 0) {
+          // Safeguard: cannot eliminate more than 50% of the candidate pool (III-C-4)
+          // Must keep at least 50%+1 candidates (top half + 1)
+          const n = seatActive.length;
+          const maxEliminate = Math.max(1, Math.floor((n - 1) / 2));
+
+          if (belowThreshold.length <= maxEliminate) {
+            toEliminate = belowThreshold;
+            elimReason = `Below ${(ELIM_THRESHOLD*100).toFixed(0)}% threshold`;
+          } else {
+            // Cap: only eliminate the bottom candidates up to 50% of pool
+            const byVotes = belowThreshold.slice().sort((a,b) => voteCounts[a] - voteCounts[b]);
+            toEliminate = byVotes.slice(0, maxEliminate);
+            elimReason = `Below ${(ELIM_THRESHOLD*100).toFixed(0)}% threshold (capped — cannot eliminate more than 50% of candidates)`;
           }
         }
 
