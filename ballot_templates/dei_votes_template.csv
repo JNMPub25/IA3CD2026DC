@@ -1,6 +1,6 @@
-Ballot_Number,Delegate_Number,Candidate A Rank,Candidate B Rank,Candidate C Rank,Candidate D Rank,Candidate E Rank
-INSTRUCTIONS: One row per paper ballot. Enter the RANK each delegate gave each candidate (1 = first choice, 2 = second choice, etc.). Leave blank if a candidate was not ranked. Add or remove Candidate columns to match the actual number of candidates. Ballot_Number and Delegate_Number are required.
+Ballot_Number,Delegate_Number,1st,2nd,3rd,4th,5th
+INSTRUCTIONS: One row per paper ballot. Enter the CANDIDATE LETTER in each ranking column (1st = first choice, 2nd = second choice, etc.). Leave blank if the delegate did not rank that many candidates. Add or remove ranking columns to match the actual number of candidates. Ballot_Number and Delegate_Number are required.
 EXAMPLE (Alice=A Bob=B Carol=C),,,,
-1,101,1,2,3,,
-2,102,2,1,,,
-3,103,,2,1,,
+1,D-6001,A,B,C,,
+2,D-6002,B,A,,,
+3,D-6003,,B,A,,

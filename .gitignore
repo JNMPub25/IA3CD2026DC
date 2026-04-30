@@ -13,6 +13,9 @@ Local files for Convention/
 *.xlsx
 *.xls
 
+# Credentials snapshots — contain delegate PII
+surrendered_delegates.json
+
 # OS files
 .DS_Store
 Thumbs.db

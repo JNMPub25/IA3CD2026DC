@@ -380,6 +380,95 @@ html, body {
   transition: opacity 0.4s;
 }
 #saved-indicator.visible { opacity: 1; }
+
+/* ── Standby screen (Option C timer) ─────────────────────────────── */
+#screen-standby { justify-content: center; }
+.standby-pulse {
+  text-align: center;
+  font-size: 2.5rem;
+  animation: standby-pulse 2s ease-in-out infinite;
+}
+@keyframes standby-pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+.standby-cand-list {
+  list-style: none;
+  border-top: 1px solid #eee;
+  margin: 0.5rem 0 0;
+}
+.standby-cand-list li {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid #eee;
+  font-size: 0.92rem;
+}
+.standby-cand-letter {
+  font-weight: 700;
+  color: #003366;
+  min-width: 1.4rem;
+}
+
+/* ── Admin screen (Option C timer) ───────────────────────────────── */
+#screen-admin { justify-content: center; }
+.admin-badge {
+  display: inline-block;
+  background: #003366;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  padding: 0.2rem 0.65rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+}
+.admin-badge.danger { background: #c0392b; }
+.admin-vote-box {
+  text-align: center;
+  background: #f0f4fa;
+  border-radius: 10px;
+  padding: 1.25rem 1rem;
+  margin: 0.75rem 0 1rem;
+}
+.admin-vote-big {
+  font-size: 3rem;
+  font-weight: 800;
+  color: #003366;
+  line-height: 1;
+}
+.admin-vote-sub {
+  font-size: 0.85rem;
+  color: #555;
+  margin-top: 0.3rem;
+}
+.admin-floor-input {
+  width: 100%;
+  padding: 0.65rem 1rem;
+  font-size: 1.15rem;
+  border: 2px solid #bbc8dc;
+  border-radius: 8px;
+  margin-top: 0.5rem;
+  text-align: center;
+}
+.admin-floor-input:focus { outline: none; border-color: #5b9bd5; }
+.admin-info-row {
+  font-size: 0.88rem;
+  color: #555;
+  text-align: center;
+  margin: 0.6rem 0;
+}
+.admin-info-row strong { color: #003366; }
+.admin-100pct {
+  background: #d4edda;
+  border: 1px solid #28a745;
+  border-radius: 6px;
+  padding: 0.55rem 0.8rem;
+  font-size: 0.85rem;
+  color: #155724;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 0.75rem;
+  display: none;
+}
 </style>
 </head>
 <body>
@@ -478,6 +567,9 @@ html, body {
     <div id="runoff-container" style="display:none;"></div>
 
     <div id="saved-indicator">✓ Progress saved</div>
+    <div id="ballot-error" style="display:none;margin-top:0.75rem;padding:0.6rem 0.9rem;
+         background:#f8d7da;border:1px solid #f5c6cb;border-radius:6px;
+         color:#721c24;font-size:0.875rem;"></div>
     <button id="btn-review" class="btn btn-primary">Review &amp; Submit</button>
   </div>
 </div>
@@ -561,6 +653,100 @@ html, body {
     <div id="closed-autosave-note" style="display:none;margin-top:1rem;padding:0.7rem;
          background:#fff3cd;border:1px solid #ffc107;border-radius:6px;font-size:0.85rem;
          color:#856404;"></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     SCREEN S — STANDBY  (Option C timer: delegates wait until admin opens)
+════════════════════════════════════════════════════════════════════════ -->
+<div id="screen-standby" class="screen">
+  <div class="card" style="margin-top:2rem;">
+    <div class="ballot-header">
+      <img class="convention-logo" src="./3rd%20District%20Logo%20300dpi.png" alt="Iowa Democratic Party 3rd Congressional District">
+      <div class="org">Iowa Democratic Party</div>
+      <h1>3rd Congressional District<br>Democratic Convention</h1>
+      <div class="date-line">May 2, 2026</div>
+      <div class="subtitle" id="standby-election-name"></div>
+    </div>
+
+    <div class="standby-pulse">⏳</div>
+    <h2 style="text-align:center;color:#003366;margin:0.5rem 0 0.2rem;">Voting Opens Soon</h2>
+    <p style="text-align:center;font-size:0.9rem;color:#555;margin-bottom:1rem;">
+      Your ballot is ready. Stand by — voting will begin shortly.
+    </p>
+
+    <!-- Candidate preview injected here for ranked/runoff ballots -->
+    <div id="standby-cands-wrap" style="display:none;">
+      <p style="font-size:0.82rem;font-weight:600;color:#444;margin-bottom:0.2rem;">
+        Candidates on this ballot:
+      </p>
+      <ul id="standby-cand-list" class="standby-cand-list"></ul>
+    </div>
+
+    <p id="standby-checking"
+       style="font-size:0.75rem;color:#aaa;text-align:center;margin-top:1rem;">
+      Checking for voting signal…
+    </p>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     SCREEN AD — ADMIN  (Option C timer: admin control panel; ?admin=1)
+════════════════════════════════════════════════════════════════════════ -->
+<div id="screen-admin" class="screen">
+  <div class="card" style="margin-top:2rem;">
+    <div class="ballot-header">
+      <img class="convention-logo" src="./3rd%20District%20Logo%20300dpi.png" alt="Iowa Democratic Party 3rd Congressional District">
+      <div class="org">Iowa Democratic Party — Admin</div>
+      <h1>3rd Congressional District<br>Democratic Convention</h1>
+      <div class="date-line">May 2, 2026</div>
+      <div class="subtitle" id="admin-election-name"></div>
+    </div>
+
+    <!-- ── Setup panel: shown before voting opens ── -->
+    <div id="admin-setup-panel">
+      <div class="admin-badge">ADMIN — OPEN VOTING</div>
+      <label style="display:block;font-size:0.9rem;font-weight:600;color:#444;">
+        Credentials currently on the floor:
+        <input id="admin-floor-count" class="admin-floor-input" type="number"
+               min="1" max="999" placeholder="e.g. 187" autocomplete="off">
+      </label>
+      <div id="admin-floor-error" class="error-msg"></div>
+      <div class="admin-info-row" style="margin-top:0.75rem;">
+        Voting window: <strong id="admin-duration-display">—</strong>
+      </div>
+      <button id="btn-open-voting" class="btn btn-primary" disabled
+              style="margin-top:0.5rem;">🗳️ Open Voting</button>
+    </div>
+
+    <!-- ── Live panel: shown while voting is open ── -->
+    <div id="admin-live-panel" style="display:none;">
+      <div class="admin-badge">ADMIN — VOTING IN PROGRESS</div>
+      <div class="admin-vote-box">
+        <div class="admin-vote-big" id="admin-vote-count">0</div>
+        <div class="admin-vote-sub">votes received</div>
+        <div style="margin-top:0.4rem;font-size:0.85rem;color:#444;">
+          out of <strong id="admin-floor-total">—</strong> credentialed on floor
+        </div>
+      </div>
+      <div class="admin-100pct" id="admin-100pct-note">
+        ✅ 100% of credentialed delegates have voted — you may close voting early.
+      </div>
+      <div class="admin-info-row">
+        Time remaining: <strong id="admin-time-remaining">—</strong>
+      </div>
+      <button id="btn-close-early" class="btn btn-danger">Close Voting Early</button>
+      <p id="admin-live-note"
+         style="font-size:0.8rem;color:#888;text-align:center;margin-top:0.6rem;"></p>
+    </div>
+
+    <!-- ── Closed panel: shown after voting closes ── -->
+    <div id="admin-closed-panel" style="display:none;text-align:center;">
+      <div class="admin-badge danger">VOTING CLOSED</div>
+      <div style="font-size:2.5rem;margin:0.5rem 0;">🔒</div>
+      <h2 style="color:#003366;margin-bottom:0.5rem;">Voting Has Closed</h2>
+      <p style="font-size:0.9rem;color:#555;" id="admin-closed-note"></p>
+    </div>
   </div>
 </div>
 
@@ -652,7 +838,9 @@ const CONFIG = {
 const params     = new URLSearchParams(window.location.search);
 const ELECTION   = params.get("election")   || "";    // e.g. "scc-w"
 const SEATS      = parseInt(params.get("seats") || "1", 10);
-const DEADLINE   = params.get("deadline")   || null;  // ISO timestamp for Phase 2
+let   DEADLINE    = params.get("deadline")   || null;  // ISO timestamp (Phase 2 or set by Option C on open)
+const DURATION    = parseInt(params.get("duration") || "0", 10) || 0;  // voting window minutes (Option C)
+const IS_ADMIN    = params.get("admin") === "1";      // admin control mode (Option C)
 const IS_TEST     = params.get("test") === "1";
 const IS_ASSISTED = params.get("mode") === "assisted";  // committee-member assisted ballot URL
 const BALLOT_TYPE = params.get("type") === "slate"  ? "slate"  :
@@ -703,6 +891,10 @@ let slateVote          = null;  // "yes" | "no" | null
 let runoffChoice       = null;  // candidate letter (string) | null  — for ?type=runoff
 let submitted          = false;
 let countdownInterval  = null;
+let pollInterval       = null;  // standby or ballot-screen status poll
+let adminTimerInterval = null;  // admin 1-second countdown display
+let adminDeadline      = null;  // Date object: when voting window ends (admin view)
+let adminFloorCount    = 0;     // floor count entered by admin
 
 // Assisted-ballot state
 let assistantName      = "";   // name of the committee member assisting
@@ -919,6 +1111,291 @@ function clearSaved(delNum) {
   try { localStorage.removeItem(lsKey(delNum)); } catch(e) {}
 }
 
+// ── OPTION C TIMER: HELPERS ──────────────────────────────────────────────
+
+function appsScriptUrl(withElection) {
+  const base = IS_TEST ? CONFIG.TEST_APPS_SCRIPT_URL : CONFIG.APPS_SCRIPT_URL;
+  return withElection ? base + "?election=" + encodeURIComponent(ELECTION) : base;
+}
+
+// ── OPTION C TIMER: STANDBY SCREEN ───────────────────────────────────────
+
+function initStandbyScreen() {
+  document.getElementById("standby-election-name").textContent = ELECTION_LABEL;
+
+  // Populate candidate preview (ranked / runoff only — not slate)
+  if (BALLOT_TYPE !== "slate" && CANDIDATES.length > 0) {
+    const wrap = document.getElementById("standby-cands-wrap");
+    const list = document.getElementById("standby-cand-list");
+    CANDIDATES.forEach(c => {
+      const li  = document.createElement("li");
+      const ltr = document.createElement("span");
+      ltr.className   = "standby-cand-letter";
+      ltr.textContent = c.letter;
+      const nm  = document.createElement("span");
+      nm.textContent  = c.name;
+      li.appendChild(ltr);
+      li.appendChild(nm);
+      list.appendChild(li);
+    });
+    wrap.style.display = "block";
+  }
+
+  show("screen-standby");
+  startStandbyPoll();
+}
+
+function startStandbyPoll() {
+  checkVotingStatus();               // check immediately on load
+  pollInterval = setInterval(checkVotingStatus, 20000);
+}
+
+async function checkVotingStatus() {
+  try {
+    const res  = await fetch(appsScriptUrl(true), { mode: "cors" });
+    const data = await res.json();
+
+    if (data.status === "open" && data.openedAt && data.duration) {
+      clearInterval(pollInterval);
+      pollInterval = null;
+      // Compute DEADLINE from what the server recorded
+      DEADLINE = new Date(
+        new Date(data.openedAt).getTime() + Number(data.duration) * 60000
+      ).toISOString();
+      // Transition all devices to the entry screen simultaneously
+      if (IS_ASSISTED) {
+        document.getElementById("role-election-name").textContent = ELECTION_LABEL;
+        show("screen-role");
+      } else {
+        show("screen-entry");
+      }
+    } else if (data.status === "closed") {
+      clearInterval(pollInterval);
+      pollInterval = null;
+      show("screen-closed");
+    }
+    // status === "standby": keep polling
+  } catch (e) {
+    // Network hiccup — keep polling silently
+    console.warn("Standby poll failed:", e);
+  }
+}
+
+// ── OPTION C TIMER: BALLOT-SCREEN EARLY-CLOSE POLL ───────────────────────
+// When DURATION is set, poll every 20 s while on the ballot screen.
+// If the admin closes early, all devices auto-submit and show the closed screen.
+
+function startBallotStatusPoll() {
+  pollInterval = setInterval(async () => {
+    if (submitted) { clearInterval(pollInterval); return; }
+    try {
+      const res  = await fetch(appsScriptUrl(true), { mode: "cors" });
+      const data = await res.json();
+      if (data.status === "closed" && !submitted) {
+        clearInterval(pollInterval);
+        clearInterval(countdownInterval);
+        saveProgress(delegateNumber);
+        autoSubmitOnClose();
+      }
+    } catch (e) { /* silent */ }
+  }, 20000);
+}
+
+// ── OPTION C TIMER: ADMIN SCREEN ─────────────────────────────────────────
+
+function initAdminScreen() {
+  document.getElementById("admin-election-name").textContent = ELECTION_LABEL;
+  document.getElementById("admin-duration-display").textContent = DURATION + " min";
+
+  // Enable Open Voting button only when a valid floor count is entered
+  const floorInput = document.getElementById("admin-floor-count");
+  const openBtn    = document.getElementById("btn-open-voting");
+
+  floorInput.addEventListener("input", () => {
+    const val = parseInt(floorInput.value, 10);
+    openBtn.disabled = !(val > 0);
+    document.getElementById("admin-floor-error").textContent = "";
+  });
+
+  document.getElementById("btn-open-voting").addEventListener("click",  openVoting);
+  document.getElementById("btn-close-early").addEventListener("click", closeVotingEarly);
+
+  show("screen-admin");
+
+  // Check current server state (handles page refresh after voting opened)
+  checkAdminStatus();
+}
+
+async function checkAdminStatus() {
+  try {
+    const res  = await fetch(appsScriptUrl(true), { mode: "cors" });
+    const data = await res.json();
+
+    if (data.status === "open" && data.openedAt && data.duration) {
+      adminFloorCount = Number(data.floorCount) || 0;
+      adminDeadline   = new Date(
+        new Date(data.openedAt).getTime() + Number(data.duration) * 60000
+      );
+      document.getElementById("admin-floor-total").textContent =
+        adminFloorCount || "—";
+      document.getElementById("admin-vote-count").textContent =
+        data.voteCount || 0;
+      showAdminLivePanel();
+    } else if (data.status === "closed") {
+      const count = data.voteCount || 0;
+      document.getElementById("admin-closed-note").textContent =
+        "Final vote count: " + count + " ballot" + (count !== 1 ? "s" : "") + " received.";
+      showAdminClosedPanel();
+    }
+    // status === "standby": leave setup panel visible, nothing to do
+  } catch (e) {
+    console.warn("Admin status check failed:", e);
+  }
+}
+
+async function openVoting() {
+  const floorInput = document.getElementById("admin-floor-count");
+  const count      = parseInt(floorInput.value, 10);
+  if (!(count > 0)) {
+    document.getElementById("admin-floor-error").textContent =
+      "Please enter the number of credentials currently on the floor.";
+    return;
+  }
+
+  adminFloorCount = count;
+  const openedAt  = new Date().toISOString();
+  adminDeadline   = new Date(new Date(openedAt).getTime() + DURATION * 60000);
+
+  // POST open action to Apps Script
+  // (no-cors: we can't read the response, but the Control tab will be updated)
+  try {
+    await fetch(appsScriptUrl(false), {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({
+        action:     "open",
+        openedAt:   openedAt,
+        duration:   DURATION,
+        floorCount: count,
+      }),
+      mode: "no-cors",
+    });
+  } catch (e) {
+    console.warn("Open voting POST failed:", e);
+    // Continue — all-or-nothing on no-cors; assume it worked
+  }
+
+  document.getElementById("admin-floor-total").textContent = count;
+  document.getElementById("admin-vote-count").textContent  = 0;
+  showAdminLivePanel();
+}
+
+async function closeVotingEarly() {
+  if (!confirm("Close voting now? Delegates still on their ballot will be auto-submitted.")) return;
+
+  try {
+    await fetch(appsScriptUrl(false), {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ action: "close" }),
+      mode:    "no-cors",
+    });
+  } catch (e) {
+    console.warn("Close voting POST failed:", e);
+  }
+
+  clearInterval(pollInterval);
+  clearInterval(adminTimerInterval);
+  pollInterval = adminTimerInterval = null;
+
+  const count = parseInt(document.getElementById("admin-vote-count").textContent, 10) || 0;
+  document.getElementById("admin-closed-note").textContent =
+    "Voting closed early. Final vote count: " + count +
+    " ballot" + (count !== 1 ? "s" : "") + " received.";
+  showAdminClosedPanel();
+}
+
+function showAdminLivePanel() {
+  document.getElementById("admin-setup-panel").style.display  = "none";
+  document.getElementById("admin-live-panel").style.display   = "block";
+  document.getElementById("admin-closed-panel").style.display = "none";
+  startAdminPoll();
+}
+
+function showAdminClosedPanel() {
+  document.getElementById("admin-setup-panel").style.display  = "none";
+  document.getElementById("admin-live-panel").style.display   = "none";
+  document.getElementById("admin-closed-panel").style.display = "block";
+  clearInterval(pollInterval);
+  clearInterval(adminTimerInterval);
+  pollInterval = adminTimerInterval = null;
+}
+
+function startAdminPoll() {
+  // 1-second local countdown display
+  adminTimerInterval = setInterval(updateAdminTimeDisplay, 1000);
+  updateAdminTimeDisplay();
+  // 10-second server poll for vote count + status
+  adminPollTick();
+  pollInterval = setInterval(adminPollTick, 10000);
+}
+
+function updateAdminTimeDisplay() {
+  if (!adminDeadline) return;
+  const msLeft = adminDeadline - new Date();
+  if (msLeft > 0) {
+    const m = Math.floor(msLeft / 60000);
+    const s = Math.floor((msLeft % 60000) / 1000);
+    document.getElementById("admin-time-remaining").textContent =
+      m + ":" + String(s).padStart(2, "0");
+  } else {
+    document.getElementById("admin-time-remaining").textContent = "0:00";
+    clearInterval(adminTimerInterval);
+    adminTimerInterval = null;
+  }
+}
+
+async function adminPollTick() {
+  try {
+    const res  = await fetch(appsScriptUrl(true), { mode: "cors" });
+    const data = await res.json();
+    const votes = Number(data.voteCount) || 0;
+
+    document.getElementById("admin-vote-count").textContent = votes;
+
+    // 100% indicator
+    if (adminFloorCount > 0 && votes >= adminFloorCount) {
+      document.getElementById("admin-100pct-note").style.display = "block";
+    }
+
+    // If timer expired: POST close (in case admin hasn't clicked manually)
+    if (adminDeadline && new Date() >= adminDeadline) {
+      if (data.status === "open") {
+        await fetch(appsScriptUrl(false), {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({ action: "close" }),
+          mode:    "no-cors",
+        });
+      }
+      document.getElementById("admin-closed-note").textContent =
+        "Voting window expired. Final vote count: " + votes +
+        " ballot" + (votes !== 1 ? "s" : "") + " received.";
+      showAdminClosedPanel();
+      return;
+    }
+
+    if (data.status === "closed") {
+      document.getElementById("admin-closed-note").textContent =
+        "Voting closed. Final vote count: " + votes +
+        " ballot" + (votes !== 1 ? "s" : "") + " received.";
+      showAdminClosedPanel();
+    }
+  } catch (e) {
+    console.warn("Admin poll failed:", e);
+  }
+}
+
 // ── PHASE & COUNTDOWN ────────────────────────────────────────────────────
 function setupPhase() {
   if (!DEADLINE) {
@@ -1019,8 +1496,11 @@ function renderRankedBallot() {
     sel.id = `rank-pos-${rank}`;
     sel.setAttribute("aria-label", `${ordinal(rank)} choice`);
 
-    // Top blank option
-    sel.appendChild(new Option("— Select or leave blank —", ""));
+    // Placeholder — visible until delegate makes a selection; required validation
+    // prevents submitting while any position is still on the placeholder.
+    const placeholder = new Option("— Select candidate —", "");
+    placeholder.disabled = false;  // keep selectable so user can "un-pick" via cascade
+    sel.appendChild(placeholder);
 
     // Candidates in this delegate's shuffled order: "A — Name"
     shuffledCandidates.forEach(c => {
@@ -1038,7 +1518,11 @@ function renderRankedBallot() {
     const currentCand = Object.keys(currentRankings).find(k => currentRankings[k] === rank);
     if (currentCand) sel.value = currentCand;
 
-    sel.addEventListener("change", () => onRankPositionChange(rank, sel.value));
+    sel.addEventListener("change", () => {
+      onRankPositionChange(rank, sel.value);
+      const errEl = document.getElementById("ballot-error");
+      if (errEl) errEl.style.display = "none";
+    });
 
     row.appendChild(label);
     row.appendChild(sel);
@@ -1243,11 +1727,22 @@ function beginVoting() {
       openBallot();
     };
   } else {
+    // No saved progress — clear any state left over from a previous submission
+    // so selections don't bleed through to the new ballot attempt.
+    currentRankings = {};
+    slateVote       = null;
+    runoffChoice    = null;
+    submitted       = false;
     openBallot();
   }
 }
 
 function openBallot() {
+  // Option C: if the voting window hasn't opened yet, go to standby instead
+  if (DURATION && !DEADLINE) {
+    initStandbyScreen();
+    return;
+  }
   // Check if voting is already closed
   if (DEADLINE && new Date(DEADLINE) < new Date()) {
     show("screen-closed");
@@ -1262,10 +1757,8 @@ function openBallot() {
       ? `Which candidate do you approve? <strong>Select one.</strong>`
       : BALLOT_TYPE === "slate"
       ? `Vote <strong>YES</strong> or <strong>NO</strong> for the slate as a whole.`
-      : `Rank the candidates in order of preference. <strong>1st</strong> = your top choice.
-         You may rank as many or as few candidates as you like.
-         Use the dropdowns to assign a rank to each candidate you wish to vote for.
-         Leave a candidate blank to skip them.`;
+      : `Rank <strong>all</strong> candidates in order of preference. <strong>1st choice</strong> = your top pick.
+         Use every dropdown — each candidate must be assigned a rank before you can submit.`;
 
   if (BALLOT_TYPE === "slate") {
     renderSlateBallot();
@@ -1277,6 +1770,9 @@ function openBallot() {
 
   setupPhase();
 
+  // Option C: poll for admin early-close while ballot is open
+  if (DURATION) startBallotStatusPoll();
+
   // Auto-save every 30 seconds
   setInterval(() => {
     if (!submitted) saveProgress(delegateNumber);
@@ -1287,6 +1783,20 @@ function openBallot() {
 
 // ── REVIEW ────────────────────────────────────────────────────────────────
 document.getElementById("btn-review").addEventListener("click", () => {
+  // For ranked ballots: all candidates must be ranked before review
+  if (BALLOT_TYPE === "ranked") {
+    const unranked = shuffledCandidates.filter(c => !currentRankings[c.letter]);
+    const errEl = document.getElementById("ballot-error");
+    if (unranked.length > 0) {
+      errEl.textContent = `Please rank all ${shuffledCandidates.length} candidates before submitting. ` +
+        `(${unranked.length} still unranked: ${unranked.map(c => c.letter).join(", ")})`;
+      errEl.style.display = "block";
+      errEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      return;
+    }
+    errEl.style.display = "none";
+  }
+
   document.getElementById("review-election-name").textContent = ELECTION_LABEL;
 
   const list = document.getElementById("review-list");
@@ -1366,7 +1876,16 @@ async function doSubmit(isAuto) {
     electionKey:   ELECTION,
     electionLabel: ELECTION_LABEL,
     ballotType:    BALLOT_TYPE,
-    timestamp:     new Date().toISOString(),
+    timestamp:     new Date().toLocaleString("en-US", {
+                     timeZone:  "America/Chicago",
+                     year:      "numeric",
+                     month:     "2-digit",
+                     day:       "2-digit",
+                     hour:      "2-digit",
+                     minute:    "2-digit",
+                     second:    "2-digit",
+                     hour12:    false,
+                   }),
     isAutoSubmit:  isAuto,
     isTest:        IS_TEST,
     rankings:      BALLOT_TYPE === "ranked" ? currentRankings : null,
@@ -1420,13 +1939,55 @@ window.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
+  // ── Option C: Admin URL ───────────────────────────────────────────────
+  if (IS_ADMIN) {
+    initAdminScreen();
+    return;
+  }
+
+  // ── Option C: Delegate URL with timer — check server status on load ───
+  // If voting is already open, compute the deadline and go straight to entry.
+  // If standby or closed, route accordingly. initStandbyScreen handles this
+  // if DURATION is set and DEADLINE is still null (set when server says "open").
+  if (DURATION && !DEADLINE) {
+    // Quick server check: maybe voting is already open (e.g., delegate loaded page late)
+    (async () => {
+      try {
+        const res  = await fetch(appsScriptUrl(true), { mode: "cors" });
+        const data = await res.json();
+        if (data.status === "open" && data.openedAt && data.duration) {
+          DEADLINE = new Date(
+            new Date(data.openedAt).getTime() + Number(data.duration) * 60000
+          ).toISOString();
+          // Voting is already open — go directly to entry
+          if (IS_ASSISTED) {
+            document.getElementById("role-election-name").textContent = ELECTION_LABEL;
+            show("screen-role");
+          } else {
+            show("screen-entry");
+          }
+        } else if (data.status === "closed") {
+          show("screen-closed");
+        } else {
+          // Status is "standby" — show standby screen and start polling
+          initStandbyScreen();
+        }
+      } catch (e) {
+        // Can't reach server — show standby and let polling retry
+        initStandbyScreen();
+      }
+    })();
+    return;
+  }
+
+  // ── Assisted mode (no timer or Phase 2 deadline already set) ─────────
   if (IS_ASSISTED) {
     document.getElementById("role-election-name").textContent = ELECTION_LABEL;
     show("screen-role");
     return;
   }
 
-  // Normal mode: screen-entry is already active by default in HTML.
+  // ── Normal mode: screen-entry is already active by default in HTML ────
 });
 </script>
 </body>

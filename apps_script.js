@@ -41,6 +41,7 @@ const CONTROL_TAB = "Control";
 // Google Drive folder ID for "3rd CD Convention"
 // (from the URL when you open that folder in Drive)
 const CONVENTION_FOLDER_ID = "1qapYmQN_oicEyYKbuvU9zq6eP3QrNwKK";
+<<<<<<< Updated upstream
 // ──────────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -148,6 +149,115 @@ function doGet(e) {
 }
 
 // ── POST: ballot submissions + admin control actions ──────────────────────────
+=======
+// ──────────────────────────────────────────────────────────────────────────
+>>>>>>> Stashed changes
+
+/**
+ * ONE-TIME SETUP: Move this spreadsheet into the "3rd CD Convention" folder.
+ *
+ * Run this manually from the Apps Script editor (not via deployment):
+ *   1. Open the Apps Script editor for this spreadsheet
+ *   2. Select "moveToConventionFolder" from the function dropdown
+ *   3. Click Run
+ *   4. Repeat in the TEST spreadsheet's Apps Script editor
+ *
+ * You only need to do this once per spreadsheet.
+ */
+function moveToConventionFolder() {
+  const file   = DriveApp.getFileById(SPREADSHEET_ID);
+  const folder = DriveApp.getFolderById(CONVENTION_FOLDER_ID);
+
+  // moveTo replaces the deprecated addFile/removeFile pattern —
+  // it moves the file into the target folder and removes it from its old parent.
+  file.moveTo(folder);
+
+  Logger.log("Moved spreadsheet " + SPREADSHEET_ID + " to 3rd CD Convention folder.");
+}
+
+// ── CONTROL TAB HELPERS (Option C timer) ──────────────────────────────────
+
+/**
+ * Returns the Control tab, creating it if it doesn't exist.
+ * Row 1 = header; Row 2 = single data row (overwritten on every action).
+ * Columns: Status | OpenedAt | Duration | FloorCount
+ */
+function ensureControlTab(ss) {
+  let sheet = ss.getSheetByName(CONTROL_TAB);
+  if (!sheet) {
+    sheet = ss.insertSheet(CONTROL_TAB);
+    sheet.appendRow(["Status", "OpenedAt", "Duration", "FloorCount"]);
+    sheet.appendRow(["standby", "", "", ""]);
+    sheet.setFrozenRows(1);
+    sheet.getRange(1, 1, 1, 4).setFontWeight("bold");
+  }
+  return sheet;
+}
+
+function getControlRow(sheet) {
+  const v = sheet.getRange(2, 1, 1, 4).getValues()[0];
+  return {
+    status:     String(v[0] || "standby"),
+    openedAt:   String(v[1] || ""),
+    duration:   Number(v[2] || 0),
+    floorCount: Number(v[3] || 0),
+  };
+}
+
+function setControlRow(sheet, status, openedAt, duration, floorCount) {
+  sheet.getRange(2, 1, 1, 4).setValues([[status, openedAt, duration, floorCount]]);
+}
+
+// ── GET: status polling endpoint ──────────────────────────────────────────
+
+/**
+ * Handles GET requests from ballot.html (status polling) and the setup script
+ * (connectivity test).
+ *
+ * Query params:
+ *   ?election=scc-w   → also returns voteCount for that election tab
+ *
+ * Response:
+ *   { status: "standby"|"open"|"closed", openedAt, duration, floorCount,
+ *     voteCount, message }
+ */
+function doGet(e) {
+  const electionKey = (e && e.parameter && e.parameter.election)
+    ? e.parameter.election : "";
+
+  try {
+    const ss   = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const ctrl = ensureControlTab(ss);
+    const row  = getControlRow(ctrl);
+
+    let voteCount = 0;
+    if (electionKey) {
+      // Count submitted ballots: rows in the election tab minus the header row.
+      // Also count any runoff tab for completeness, though usually just the main one.
+      const sheetName = getSheetName(electionKey);
+      const elSheet   = ss.getSheetByName(sheetName);
+      if (elSheet) voteCount = Math.max(0, elSheet.getLastRow() - 1);
+    }
+
+    return ContentService
+      .createTextOutput(JSON.stringify({
+        status:     row.status,
+        openedAt:   row.openedAt,
+        duration:   row.duration,
+        floorCount: row.floorCount,
+        voteCount:  voteCount,
+        message:    "Ballot receiver is live.",
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+
+  } catch (err) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ status: "error", message: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// ── POST: ballot submissions + admin control actions ──────────────────────
 
 /**
  * Receives POST requests from ballot.html.
@@ -170,7 +280,11 @@ function doPost(e) {
     const data = JSON.parse(e.postData.contents);
     const ss   = SpreadsheetApp.openById(SPREADSHEET_ID);
 
+<<<<<<< Updated upstream
     // ── Admin: open voting ──────────────────────────────────────────────────────
+=======
+    // ── Admin: open voting ──────────────────────────────────────────────────
+>>>>>>> Stashed changes
     if (data.action === "open") {
       const ctrl = ensureControlTab(ss);
       setControlRow(ctrl, "open", data.openedAt || "", data.duration || 0, data.floorCount || 0);
@@ -179,7 +293,11 @@ function doPost(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
+<<<<<<< Updated upstream
     // ── Admin: close voting ─────────────────────────────────────────────────────
+=======
+    // ── Admin: close voting ─────────────────────────────────────────────────
+>>>>>>> Stashed changes
     if (data.action === "close") {
       const ctrl = ensureControlTab(ss);
       const row  = getControlRow(ctrl);
@@ -189,7 +307,11 @@ function doPost(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
+<<<<<<< Updated upstream
     // ── Ballot submission ───────────────────────────────────────────────────────
+=======
+    // ── Ballot submission ───────────────────────────────────────────────────
+>>>>>>> Stashed changes
     const sheetName = data.ballotType === "runoff"
       ? "Runoff " + data.electionKey
       : getSheetName(data.electionKey);
@@ -216,7 +338,11 @@ function doPost(e) {
   }
 }
 
+<<<<<<< Updated upstream
 // ── HELPERS ────────────────────────────────────────────────────────────────────
+=======
+// ── HELPERS ────────────────────────────────────────────────────────────────
+>>>>>>> Stashed changes
 
 function getSheetName(electionKey) {
   const names = {
@@ -314,7 +440,11 @@ function upsertRow(sheet, data) {
   }
 }
 
+<<<<<<< Updated upstream
 // ── AUDIT LOG ──────────────────────────────────────────────────────────────────
+=======
+// ── AUDIT LOG ──────────────────────────────────────────────────────────────
+>>>>>>> Stashed changes
 
 /**
  * Formats the vote selections into a compact human-readable string for the log.

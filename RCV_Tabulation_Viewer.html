@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RCV Tabulation Viewer — 3rd CD Convention 2026</title>
+<style>
+:root {
+  --navy: #003366;
+  --navy-light: #004488;
+  --gold: #C5A044;
+  --green: #2d8a4e;
+  --red: #c0392b;
+  --orange: #e67e22;
+  --bg: #f5f5f0;
+  --card-bg: #ffffff;
+  --text: #1a1a1a;
+  --text-muted: #666;
+  --border: #ddd;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+}
+.header {
+  background: var(--navy);
+  color: white;
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.header h1 { font-size: 1.3rem; font-weight: 600; }
+.header .subtitle { font-size: 0.85rem; opacity: 0.8; }
+.container { max-width: 1200px; margin: 0 auto; padding: 16px; }
+
+.setup-panel {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 24px;
+  margin-bottom: 16px;
+}
+.setup-panel h2 { font-size: 1.1rem; margin-bottom: 12px; color: var(--navy); }
+.setup-row { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 12px; }
+.setup-field label { display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px; }
+.setup-field input, .setup-field select {
+  padding: 6px 10px; border: 1px solid var(--border); border-radius: 4px;
+  font-size: 0.9rem; font-family: inherit;
+}
+.setup-field select { min-width: 160px; }
+.setup-field input[type="number"] { width: 70px; }
+textarea.ballot-input {
+  width: 100%; height: 180px; font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 0.8rem; padding: 10px; border: 1px solid var(--border); border-radius: 4px;
+  resize: vertical;
+}
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 16px; border: none; border-radius: 4px;
+  font-size: 0.85rem; font-weight: 600; cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-primary { background: var(--navy); color: white; }
+.btn-primary:hover:not(:disabled) { background: var(--navy-light); }
+.btn-success { background: var(--green); color: white; }
+.btn-success:hover:not(:disabled) { background: #248f3f; }
+.btn-danger { background: var(--red); color: white; }
+.btn-danger:hover:not(:disabled) { background: #a93226; }
+.btn-outline {
+  background: transparent; color: var(--navy); border: 1px solid var(--navy);
+}
+.btn-outline:hover:not(:disabled) { background: var(--navy); color: white; }
+.btn-gold { background: var(--gold); color: white; }
+.btn-gold:hover:not(:disabled) { background: #b8923a; }
+
+.controls-bar {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 20px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.controls-bar .status-badge {
+  padding: 4px 12px; border-radius: 12px; font-size: 0.8rem; font-weight: 600;
+}
+.status-running { background: #d4edda; color: #155724; }
+.status-paused { background: #fff3cd; color: #856404; }
+.status-complete { background: #d1ecf1; color: #0c5460; }
+.status-idle { background: #e9ecef; color: #495057; }
+.speed-control { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; }
+.speed-control input { width: 80px; }
+
+.display-grid {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 16px;
+}
+@media (max-width: 900px) {
+  .display-grid { grid-template-columns: 1fr; }
+}
+
+.vote-panel {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+}
+.vote-panel h3 { font-size: 1rem; color: var(--navy); margin-bottom: 4px; }
+.vote-panel .round-info { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 16px; }
+.candidate-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 0; border-bottom: 1px solid #eee;
+}
+.candidate-row:last-child { border-bottom: none; }
+.cand-label { width: 160px; font-weight: 600; font-size: 0.9rem; flex-shrink: 0; }
+.cand-bar-wrap { flex: 1; height: 28px; background: #eee; border-radius: 4px; position: relative; overflow: hidden; }
+.cand-bar {
+  height: 100%; border-radius: 4px;
+  transition: width 0.5s ease;
+  display: flex; align-items: center; padding-left: 8px;
+  font-size: 0.75rem; font-weight: 600; color: white;
+  min-width: 0;
+}
+.cand-bar.active { background: var(--navy); }
+.cand-bar.elected { background: var(--green); }
+.cand-bar.eliminated { background: var(--red); opacity: 0.6; }
+.cand-bar.exhausted-bar { background: #999; }
+.cand-votes { width: 70px; text-align: right; font-size: 0.85rem; font-weight: 600; flex-shrink: 0; }
+.cand-pct { width: 55px; text-align: right; font-size: 0.8rem; color: var(--text-muted); flex-shrink: 0; }
+.cand-status { width: 100px; font-size: 0.75rem; font-weight: 700; text-align: center; flex-shrink: 0; }
+.cand-status.elected-tag { color: var(--green); }
+.cand-status.elim-tag { color: var(--red); }
+
+.threshold-line {
+  font-size: 0.8rem; padding: 6px 12px; margin-top: 12px;
+  border-radius: 4px; background: #f8f9fa;
+}
+.threshold-line span { font-weight: 600; }
+
+.redist-panel {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+  max-height: 600px;
+  overflow-y: auto;
+}
+.redist-panel h3 { font-size: 1rem; color: var(--navy); margin-bottom: 4px; }
+.redist-panel .redist-subtitle { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px; }
+.redist-group { margin-bottom: 16px; }
+.redist-group-header {
+  font-size: 0.85rem; font-weight: 700; padding: 6px 10px;
+  border-radius: 4px; margin-bottom: 6px;
+}
+.redist-group-header.to-candidate { background: #d4edda; color: #155724; }
+.redist-group-header.exhausted-hdr { background: #f8d7da; color: #721c24; }
+.redist-group-header.from-candidate { background: #fce4ec; color: #b71c1c; }
+.redist-ballot {
+  font-size: 0.78rem; padding: 3px 10px 3px 20px;
+  color: var(--text-muted); border-left: 3px solid #ddd;
+  margin-bottom: 2px;
+}
+.redist-ballot .delegate-id { font-weight: 600; color: var(--text); }
+
+.event-log {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 16px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+.event-log h3 { font-size: 0.95rem; color: var(--navy); margin-bottom: 8px; }
+.log-entry { font-size: 0.8rem; padding: 4px 0; border-bottom: 1px solid #f0f0f0; }
+.log-winner { color: var(--green); font-weight: 600; }
+.log-elim { color: var(--red); }
+.log-info { color: var(--navy); }
+.log-seat { color: var(--gold); font-weight: 700; border-top: 2px solid var(--gold); margin-top: 6px; padding-top: 6px; }
+
+.summary-panel {
+  background: var(--card-bg);
+  border: 2px solid var(--green);
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 16px;
+}
+.summary-panel h3 { color: var(--green); margin-bottom: 12px; }
+.winner-row { display: flex; gap: 10px; padding: 6px 0; font-size: 0.95rem; }
+.winner-seat { font-weight: 600; color: var(--navy); width: 70px; }
+.winner-name { font-weight: 700; color: var(--green); }
+
+.hidden { display: none !important; }
+
+.note-box {
+  background: #fffbe6; border: 1px solid #ffe58f; border-radius: 6px;
+  padding: 10px 14px; font-size: 0.82rem; color: #614700; margin-bottom: 12px;
+}
+.scenario-select { min-width: 320px; font-size: 0.9rem; padding: 8px 10px; }
+.scenario-info { font-size: 0.82rem; color: var(--text-muted); margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>RCV Tabulation Viewer</h1>
+    <div class="subtitle">3rd Congressional District Democratic Convention — May 2, 2026</div>
+  </div>
+</div>
+
+<div class="container">
+
+  <div class="setup-panel" id="setup-panel">
+    <h2>Election Setup</h2>
+
+    <div class="note-box">
+      <strong>How it works:</strong> Select a test scenario below, then use the controls to step through each round of tabulation.
+      At each redistribution step you can pause and inspect exactly where each ballot moves.
+      Rules applied: 15% elimination threshold in Round 1, lowest-vote elimination in Round 2+,
+      50%+1 majority to win. Between seats, only the winner is removed — all other candidates return to the pool.
+    </div>
+
+    <div class="setup-row">
+      <div class="setup-field">
+        <label>Test Scenario</label>
+        <select class="scenario-select" id="scenario-select" onchange="onScenarioChange()">
+          <optgroup label="SCC Women (4 seats, 250 ballots)">
+            <option value="scc_w_6">SCC Women — 6 candidates</option>
+            <option value="scc_w_11">SCC Women — 11 candidates</option>
+            <option value="scc_w_17">SCC Women — 17 candidates (worst case)</option>
+          </optgroup>
+          <optgroup label="SCC Men/Non-Binary (4 seats, 250 ballots)">
+            <option value="scc_mnb_6">SCC Men/Non-Binary — 6 candidates</option>
+            <option value="scc_mnb_11">SCC Men/Non-Binary — 11 candidates</option>
+            <option value="scc_mnb_17">SCC Men/Non-Binary — 17 candidates (worst case)</option>
+          </optgroup>
+          <optgroup label="DEI Committee Chair (1 seat, 250 ballots)">
+            <option value="dei_4">DEI Committee Chair — 4 candidates</option>
+            <option value="dei_9">DEI Committee Chair — 9 candidates</option>
+          </optgroup>
+          <option value="custom">Custom — Paste CSV</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="scenario-info" class="scenario-info"></div>
+
+    <div id="candidate-names-section">
+      <div class="setup-row" style="margin-top:12px">
+        <div class="setup-field">
+          <label>Election Name</label>
+          <input type="text" id="election-name" value="" style="width:240px">
+        </div>
+        <div class="setup-field">
+          <label>Seats</label>
+          <input type="number" id="num-seats" value="4" min="1" max="20">
+        </div>
+        <div class="setup-field">
+          <label>Elimination Threshold</label>
+          <select id="elim-threshold">
+            <option value="0.15" selected>15%</option>
+            <option value="0.10">10%</option>
+            <option value="0.05">5%</option>
+          </select>
+        </div>
+      </div>
+      <div class="setup-row" id="candidate-names-row" style="flex-wrap:wrap;"></div>
+    </div>
+
+    <div id="csv-section" class="hidden">
+      <p style="font-size:0.85rem; margin:12px 0 8px;">
+        Paste ballot data as CSV: <code>DelegateID, 1stChoice, 2ndChoice, 3rdChoice, ...</code>
+      </p>
+      <textarea class="ballot-input" id="csv-input" placeholder="D-6001,A,B,C,D,E&#10;D-6002,C,A,B,E,D&#10;..."></textarea>
+    </div>
+
+    <div style="margin-top:16px; display:flex; gap:10px;">
+      <button class="btn btn-primary" onclick="startTabulation()">Start Tabulation</button>
+      <button class="btn btn-outline" onclick="resetAll()">Reset</button>
+    </div>
+  </div>
+
+  <div class="controls-bar hidden" id="controls-bar">
+    <button class="btn btn-success" id="btn-step" onclick="stepForward()">Step Forward</button>
+    <button class="btn btn-gold" id="btn-auto" onclick="toggleAutoPlay()">Auto-Play</button>
+    <button class="btn btn-danger" id="btn-pause" onclick="pauseTabulation()" disabled>Pause</button>
+    <div class="speed-control">
+      <label>Speed:</label>
+      <input type="range" id="speed-slider" min="300" max="5000" value="2000" step="100">
+      <span id="speed-label">2.0s</span>
+    </div>
+    <button class="btn btn-outline" onclick="resetAll()">Reset</button>
+    <div style="flex:1"></div>
+    <span class="status-badge status-idle" id="status-badge">Ready</span>
+  </div>
+
+  <div class="display-grid hidden" id="display-area">
+    <div>
+      <div class="vote-panel" id="vote-panel">
+        <h3 id="vp-title">—</h3>
+        <div class="round-info" id="vp-round-info">—</div>
+        <div id="vp-candidates">
+          <p style="color:var(--text-muted); font-size:0.9rem;">Click "Start Tabulation" to begin.</p>
+        </div>
+        <div id="vp-thresholds"></div>
+      </div>
+      <div class="event-log" id="event-log">
+        <h3>Event Log</h3>
+        <div id="log-entries"></div>
+      </div>
+      <div class="summary-panel hidden" id="summary-panel">
+        <h3>Election Results</h3>
+        <div id="summary-results"></div>
+      </div>
+    </div>
+    <div class="redist-panel" id="redist-panel">
+      <h3>Redistribution Detail</h3>
+      <div class="redist-subtitle" id="redist-subtitle">Step through the tabulation to see ballot movement.</div>
+      <div id="redist-content"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const TEST_SCENARIOS = {
+"scc_w_6":{label:"SCC Women — 6 candidates",electionName:"SCC Women",seats:4,candidates:{"A":"Anderson","B":"Baker","C":"Chen","D":"Davis","E":"Edwards","F":"Foster"},ballots:[["D-6001","C","B","F","D","E","A"],["D-6002","A","D","C","E","F","B"],["D-6003","E","C","F","D","B","A"],["D-6004","A","D","E","B","C","F"],["D-6005","D","F","A","B","E","C"],["D-6006","F","D","A","B","C","E"],["D-6007","F","A","E","B","D","C"],["D-6008","F","A","C","B","D","E"],["D-6009","A","D","C","B","E","F"],["D-6010","B","F","E","D","A","C"],["D-6011","D","C","E","B","A","F"],["D-6012","D","C","A","E","F","B"],["D-6013","A","D","C","E","F","B"],["D-6014","B","E","C","A","F","D"],["D-6015","C","A","E","D","F","B"],["D-6016","D","F","C","A","B","E"],["D-6017","A","D","C","B","F","E"],["D-6018","D","E","F","C","A","B"],["D-6019","F","B","E","A","C","D"],["D-6020","E","F","B","A","D","C"],["D-6021","C","A","B","F","E","D"],["D-6022","F","A","E","D","C","B"],["D-6023","E","A","B","F","D","C"],["D-6024","F","C","A","D","B","E"],["D-6025","A","D","E","F","C","B"],["D-6026","C","A","F","E","B","D"],["D-6027","F","A","B","E","C","D"],["D-6028","C","F","A","E","B","D"],["D-6029","B","E","D","C","A","F"],["D-6030","B","F","D","C","A","E"],["D-6031","D","C","A","F","E","B"],["D-6032","A","C","B","F","D","E"],["D-6033","A","F","B","D","E","C"],["D-6034","B","D","F","E","C","A"],["D-6035","E","D","B","F","C","A"],["D-6036","F","D","B","C","A","E"],["D-6037","D","E","B","F","A","C"],["D-6038","F","A","B","D","C","E"],["D-6039","B","F","C","E","A","D"],["D-6040","B","A","D","E","C","F"],["D-6041","D","F","E","A","B","C"],["D-6042","E","F","B","C","D","A"],["D-6043","B","E","C","F","A","D"],["D-6044","F","D","B","E","A","C"],["D-6045","E","C","F","D","A","B"],["D-6046","A","B","D","F","C","E"],["D-6047","A","D","C","E","B","F"],["D-6048","A","D","C","F","B","E"],["D-6049","A","C","F","D","B","E"],["D-6050","E","A","B","F","C","D"],["D-6051","B","F","E","D","A","C"],["D-6052","A","C","D","E","B","F"],["D-6053","B","F","D","A","C","E"],["D-6054","C","A","F","D","E","B"],["D-6055","A","E","C","B","D","F"],["D-6056","F","B","C","D","E","A"],["D-6057","B","A","E","F","D","C"],["D-6058","F","E","D","C","A","B"],["D-6059","C","B","D","F","E","A"],["D-6060","E","C","F","A","B","D"],["D-6061","F","A","C","B","E","D"],["D-6062","B","C","F","E","A","D"],["D-6063","E","A","F","D","C","B"],["D-6064","A","C","B","D","E","F"],["D-6065","C","E","D","F","A","B"],["D-6066","A","E","B","C","D","F"],["D-6067","F","E","A","B","C","D"],["D-6068","B","A","D","C","E","F"],["D-6069","D","A","E","B","F","C"],["D-6070","E","B","D","F","A","C"],["D-6071","F","B","A","D","E","C"],["D-6072","D","F","C","E","A","B"],["D-6073","E","D","A","F","C","B"],["D-6074","A","F","B","D","C","E"],["D-6075","A","D","B","F","E","C"],["D-6076","D","C","A","B","E","F"],["D-6077","C","B","A","E","D","F"],["D-6078","D","C","A","F","E","B"],["D-6079","D","E","B","C","A","F"],["D-6080","A","B","C","D","E","F"],["D-6081","B","E","A","F","C","D"],["D-6082","B","F","D","E","A","C"],["D-6083","B","F","A","C","D","E"],["D-6084","A","B","F","E","D","C"],["D-6085","E","A","B","C","D","F"],["D-6086","D","A","C","E","F","B"],["D-6087","D","C","F","E","A","B"],["D-6088","A","C","E","D","B","F"],["D-6089","B","E","F","C","D","A"],["D-6090","C","A","E","D","F","B"],["D-6091","D","C","F","A","B","E"],["D-6092","F","B","A","C","D","E"],["D-6093","B","E","A","F","D","C"],["D-6094","D","F","A","E","B","C"],["D-6095","E","A","F","D","B","C"],["D-6096","F","E","B","C","A","D"],["D-6097","A","B","E","F","D","C"],["D-6098","A","F","D","E","C","B"],["D-6099","A","C","E","B","D","F"],["D-6100","C","D","F","E","B","A"],["D-6101","F","C","A","B","D","E"],["D-6102","E","D","F","C","B","A"],["D-6103","E","B","C","F","D","A"],["D-6104","E","A","F","D","C","B"],["D-6105","E","C","F","A","D","B"],["D-6106","A","C","F","E","D","B"],["D-6107","E","D","B","A","F","C"],["D-6108","B","A","F","C","E","D"],["D-6109","A","E","C","D","F","B"],["D-6110","D","F","B","C","A","E"],["D-6111","A","F","D","E","C","B"],["D-6112","B","A","E","C","D","F"],["D-6113","F","B","A","C","E","D"],["D-6114","F","D","C","E","A","B"],["D-6115","A","D","C","E","F","B"],["D-6116","B","D","E","A","C","F"],["D-6117","B","D","A","C","F","E"],["D-6118","F","A","B","D","C","E"],["D-6119","B","E","C","D","F","A"],["D-6120","C","A","F","E","D","B"],["D-6121","A","F","C","B","E","D"],["D-6122","B","A","C","F","E","D"],["D-6123","E","A","C","F","D","B"],["D-6124","F","C","D","B","E","A"],["D-6125","E","D","A","B","C","F"],["D-6126","E","A","B","F","C","D"],["D-6127","A","F","B","C","D","E"],["D-6128","A","E","C","F","D","B"],["D-6129","A","B","C","F","D","E"],["D-6130","B","A","F","D","C","E"],["D-6131","A","D","F","B","C","E"],["D-6132","E","C","D","F","B","A"],["D-6133","E","B","F","C","A","D"],["D-6134","F","D","E","C","A","B"],["D-6135","D","E","A","F","B","C"],["D-6136","E","F","A","C","B","D"],["D-6137","A","F","C","E","B","D"],["D-6138","E","B","A","C","D","F"],["D-6139","E","C","D","B","F","A"],["D-6140","F","D","C","E","B","A"],["D-6141","F","D","E","A","B","C"],["D-6142","D","C","F","B","E","A"],["D-6143","B","E","C","A","D","F"],["D-6144","F","C","A","B","E","D"],["D-6145","C","A","F","D","B","E"],["D-6146","F","E","A","D","C","B"],["D-6147","B","C","E","A","D","F"],["D-6148","F","C","B","D","E","A"],["D-6149","B","C","D","E","A","F"],["D-6150","F","E","B","C","A","D"],["D-6151","F","C","A","B","E","D"],["D-6152","F","B","E","C","D","A"],["D-6153","F","E","B","A","D","C"],["D-6154","F","E","C","D","B","A"],["D-6155","C","B","F","E","A","D"],["D-6156","D","F","A","E","C","B"],["D-6157","B","F","A","D","C","E"],["D-6158","B","E","A","C","F","D"],["D-6159","A","E","F","B","C","D"],["D-6160","F","C","D","E","B","A"],["D-6161","A","F","C","B","E","D"],["D-6162","E","A","C","B","D","F"],["D-6163","A","E","C","F","B","D"],["D-6164","A","F","E","B","D","C"],["D-6165","E","C","B","D","A","F"],["D-6166","B","A","E","D","F","C"],["D-6167","D","A","C","F","E","B"],["D-6168","D","C","F","E","B","A"],["D-6169","C","A","B","F","E","D"],["D-6170","A","B","F","E","C","D"],["D-6171","B","E","F","A","C","D"],["D-6172","C","B","F","D","A","E"],["D-6173","C","A","E","B","F","D"],["D-6174","B","A","E","F","D","C"],["D-6175","D","A","C","E","B","F"],["D-6176","F","C","D","A","E","B"],["D-6177","C","F","A","B","E","D"],["D-6178","F","D","A","E","C","B"],["D-6179","B","A","D","C","F","E"],["D-6180","B","E","C","A","D","F"],["D-6181","F","B","A","E","C","D"],["D-6182","C","B","A","F","E","D"],["D-6183","E","C","D","F","B","A"],["D-6184","E","D","F","C","A","B"],["D-6185","F","E","C","A","B","D"],["D-6186","B","A","F","E","D","C"],["D-6187","C","D","F","B","E","A"],["D-6188","A","E","F","B","C","D"],["D-6189","E","A","F","C","B","D"],["D-6190","F","E","A","C","D","B"],["D-6191","B","C","E","A","D","F"],["D-6192","B","D","C","A","E","F"],["D-6193","B","A","E","C","D","F"],["D-6194","F","B","E","A","D","C"],["D-6195","C","A","D","B","F","E"],["D-6196","E","F","B","A","C","D"],["D-6197","B","E","C","F","A","D"],["D-6198","B","F","E","D","A","C"],["D-6199","D","E","F","C","A","B"],["D-6200","D","E","F","A","C","B"],["D-6201","F","C","B","A","E","D"],["D-6202","B","E","A","F","C","D"],["D-6203","C","A","F","B","E","D"],["D-6204","D","E","F","A","C","B"],["D-6205","B","C","F","A","E","D"],["D-6206","F","D","C","B","E","A"],["D-6207","A","D","B","F","E","C"],["D-6208","D","F","E","B","C","A"],["D-6209","C","E","A","B","F","D"],["D-6210","E","B","D","A","C","F"],["D-6211","A","D","C","B","E","F"],["D-6212","A","D","C","E","F","B"],["D-6213","D","A","C","B","F","E"],["D-6214","F","D","A","B","E","C"],["D-6215","E","F","C","A","B","D"],["D-6216","F","C","A","B","E","D"],["D-6217","F","E","B","A","C","D"],["D-6218","A","D","C","B","E","F"],["D-6219","A","F","E","B","D","C"],["D-6220","C","F","A","D","E","B"],["D-6221","C","D","F","B","A","E"],["D-6222","D","F","A","E","C","B"],["D-6223","C","B","D","F","E","A"],["D-6224","E","C","B","F","A","D"],["D-6225","B","C","E","F","A","D"],["D-6226","E","A","C","F","D","B"],["D-6227","A","F","D","C","E","B"],["D-6228","F","A","D","B","E","C"],["D-6229","D","A","C","E","F","B"],["D-6230","F","C","B","A","D","E"],["D-6231","F","D","A","B","C","E"],["D-6232","C","B","D","E","A","F"],["D-6233","B","E","D","F","A","C"],["D-6234","C","F","A","D","B","E"],["D-6235","D","E","A","C","B","F"],["D-6236","B","E","C","F","D","A"],["D-6237","A","F","C","E","D","B"],["D-6238","F","C","A","B","D","E"],["D-6239","F","D","B","C","A","E"],["D-6240","E","F","C","A","B","D"],["D-6241","F","B","A","E","D","C"],["D-6242","D","B","E","C","F","A"],["D-6243","E","B","F","C","D","A"],["D-6244","B","A","C","F","D","E"],["D-6245","B","F","E","D","A","C"],["D-6246","C","D","F","A","E","B"],["D-6247","C","F","E","B","D","A"],["D-6248","A","D","C","E","B","F"],["D-6249","E","F","A","C","B","D"],["D-6250","B","D","C","F","E","A"]]},
+"scc_w_11":{label:"SCC Women — 11 candidates",electionName:"SCC Women",seats:4,candidates:{"A":"Anderson","B":"Baker","C":"Chen","D":"Davis","E":"Edwards","F":"Foster","G":"Garcia","H":"Harris","I":"Ibrahim","J":"Jackson","K":"Kim"},ballots:[["D-6001","C","F","H","G","J","B","D","K","A","I","E"],["D-6002","F","A","B","D","I","H","J","C","K","G","E"],["D-6003","K","C","A","B","G","I","J","F","H","D","E"],["D-6004","D","E","A","C","K","B","J","G","H","I","F"],["D-6005","C","J","K","D","G","E","I","A","B","H","F"],["D-6006","D","J","K","I","A","G","F","C","B","H","E"],["D-6007","H","D","F","E","K","I","G","J","A","C","B"],["D-6008","G","H","A","C","E","F","J","B","I","D","K"],["D-6009","A","B","J","I","E","D","G","K","H","C","F"],["D-6010","A","I","C","J","F","K","D","H","B","G","E"],["D-6011","I","F","C","D","H","E","J","G","B","K","A"],["D-6012","B","I","E","F","G","H","A","J","D","K","C"],["D-6013","H","E","C","F","B","G","I","J","A","D","K"],["D-6014","D","C","H","K","F","B","J","G","I","A","E"],["D-6015","I","C","B","E","F","J","G","K","D","H","A"],["D-6016","J","K","A","F","D","B","C","H","G","I","E"],["D-6017","E","H","K","J","C","B","A","I","D","F","G"],["D-6018","I","F","A","B","E","D","C","H","K","J","G"],["D-6019","G","F","I","H","E","C","A","K","J","D","B"],["D-6020","B","A","G","I","C","H","F","J","D","K","E"],["D-6021","I","J","F","E","D","G","C","B","A","H","K"],["D-6022","H","I","F","A","E","J","K","D","B","C","G"],["D-6023","B","H","A","D","K","C","E","J","F","I","G"],["D-6024","F","J","I","A","E","D","K","H","C","B","G"],["D-6025","C","B","H","D","G","E","F","I","A","J","K"],["D-6026","F","H","A","D","I","J","B","E","G","K","C"],["D-6027","G","J","A","D","E","K","F","C","H","B","I"],["D-6028","J","K","G","A","F","H","I","E","D","C","B"],["D-6029","B","E","A","I","C","H","D","F","J","G","K"],["D-6030","F","K","H","E","I","J","G","D","B","C","A"],["D-6031","F","A","B","I","C","E","H","D","K","J","G"],["D-6032","C","J","D","K","B","H","E","I","F","A","G"],["D-6033","H","E","D","G","B","C","K","I","J","A","F"],["D-6034","J","E","C","G","H","D","K","F","I","B","A"],["D-6035","B","I","E","J","G","A","H","F","K","D","C"],["D-6036","A","G","E","H","J","C","I","D","F","B","K"],["D-6037","K","G","D","E","B","H","F","A","C","I","J"],["D-6038","J","I","E","H","K","B","A","C","G","F","D"],["D-6039","B","K","G","J","H","I","F","D","A","C","E"],["D-6040","H","F","A","B","C","I","G","J","E","K","D"],["D-6041","H","G","K","D","C","A","B","J","F","E","I"],["D-6042","C","H","G","J","I","A","D","B","E","K","F"],["D-6043","K","I","J","F","H","D","B","C","G","E","A"],["D-6044","C","G","D","B","E","A","F","I","K","H","J"],["D-6045","A","F","I","B","H","G","D","K","E","J","C"],["D-6046","J","E","A","D","I","H","G","C","F","B","K"],["D-6047","H","K","A","D","J","C","E","I","G","F","B"],["D-6048","A","B","D","E","J","F","C","I","K","G","H"],["D-6049","A","G","D","H","I","K","E","J","F","C","B"],["D-6050","J","H","A","K","I","E","D","B","C","F","G"],["D-6051","F","J","D","B","E","K","H","I","A","C","G"],["D-6052","J","G","K","A","D","H","E","B","C","F","I"],["D-6053","E","J","I","G","D","C","B","A","K","H","F"],["D-6054","J","B","G","F","D","I","A","E","K","H","C"],["D-6055","J","K","I","A","B","H","F","C","G","D","E"],["D-6056","G","I","C","D","E","H","F","J","K","B","A"],["D-6057","J","A","F","I","G","K","H","B","D","E","C"],["D-6058","C","A","H","K","G","F","I","B","J","E","D"],["D-6059","J","I","C","K","D","H","F","A","G","B","E"],["D-6060","J","C","A","F","B","D","E","I","H","G","K"],["D-6061","A","F","E","D","B","J","I","G","K","C","H"],["D-6062","B","K","G","H","C","A","D","J","I","F","E"],["D-6063","J","D","I","C","B","A","K","H","G","F","E"],["D-6064","I","C","F","E","B","D","K","G","A","J","H"],["D-6065","A","K","C","I","F","H","B","G","J","E","D"],["D-6066","J","G","I","A","H","B","D","C","K","E","F"],["D-6067","A","D","E","C","G","F","I","H","K","J","B"],["D-6068","C","H","B","G","J","A","E","D","K","F","I"],["D-6069","E","C","J","A","H","K","D","I","F","B","G"],["D-6070","G","F","C","I","K","A","J","E","B","D","H"],["D-6071","I","J","E","K","D","F","G","H","C","A","B"],["D-6072","J","E","D","A","C","G","K","I","B","H","F"],["D-6073","I","C","B","J","A","H","G","E","D","K","F"],["D-6074","E","G","F","K","C","H","D","I","A","B","J"],["D-6075","B","I","C","A","F","E","J","H","K","G","D"],["D-6076","D","B","J","K","C","A","F","I","H","G","E"],["D-6077","I","E","G","A","B","J","C","K","D","F","H"],["D-6078","B","A","J","G","D","I","E","H","K","F","C"],["D-6079","F","G","K","A","C","J","E","B","D","H","I"],["D-6080","D","I","A","B","H","G","E","C","J","K","F"],["D-6081","J","E","C","K","G","F","B","D","A","H","I"],["D-6082","F","J","D","H","C","B","K","G","E","I","A"],["D-6083","J","H","A","G","B","I","K","C","E","F","D"],["D-6084","E","I","K","D","B","G","A","F","J","C","H"],["D-6085","K","F","A","J","I","B","H","C","E","D","G"],["D-6086","G","C","B","J","A","H","D","F","K","E","I"],["D-6087","G","A","H","K","C","J","I","D","B","E","F"],["D-6088","J","K","F","I","C","G","D","E","H","B","A"],["D-6089","F","E","B","H","G","I","C","D","J","K","A"],["D-6090","B","I","E","C","J","K","G","A","D","H","F"],["D-6091","H","F","D","G","E","I","B","A","K","C","J"],["D-6092","F","H","A","G","D","E","C","J","I","B","K"],["D-6093","B","G","C","D","J","K","I","A","F","E","H"],["D-6094","H","C","I","K","E","B","J","D","G","F","A"],["D-6095","F","G","D","E","A","J","B","C","I","H","K"],["D-6096","C","B","D","G","A","I","H","J","F","K","E"],["D-6097","D","A","F","I","J","H","G","C","K","B","E"],["D-6098","J","D","B","E","I","K","H","F","G","C","A"],["D-6099","K","E","H","B","C","J","G","I","A","F","D"],["D-6100","H","F","E","C","D","I","G","J","B","A","K"],["D-6101","H","F","J","C","I","E","D","G","A","K","B"],["D-6102","C","B","K","J","E","A","H","F","I","G","D"],["D-6103","I","B","G","F","A","K","C","E","D","H","J"],["D-6104","D","J","G","I","H","K","E","B","A","C","F"],["D-6105","A","K","F","D","B","H","C","J","E","G","I"],["D-6106","G","J","E","H","K","I","C","F","B","A","D"],["D-6107","J","I","H","K","B","C","E","A","F","G","D"],["D-6108","B","J","A","C","K","F","H","I","G","D","E"],["D-6109","H","A","D","I","E","G","C","K","F","J","B"],["D-6110","H","G","K","I","D","F","B","J","A","E","C"],["D-6111","F","B","J","H","D","G","E","C","I","K","A"],["D-6112","G","F","I","K","C","H","B","E","D","A","J"],["D-6113","A","E","C","F","K","J","D","I","B","H","G"],["D-6114","B","A","G","D","E","I","H","J","C","K","F"],["D-6115","E","J","D","A","B","C","H","I","K","F","G"],["D-6116","J","I","G","B","C","E","A","H","D","F","K"],["D-6117","J","C","E","G","K","A","B","I","H","F","D"],["D-6118","A","G","H","J","F","I","C","K","D","B","E"],["D-6119","C","E","F","J","B","H","A","G","K","I","D"],["D-6120","I","D","K","F","J","B","E","A","H","C","G"],["D-6121","B","G","I","E","H","D","K","A","C","F","J"],["D-6122","I","H","E","B","K","J","G","D","C","A","F"],["D-6123","I","C","G","E","K","B","H","J","A","F","D"],["D-6124","F","C","J","E","H","K","B","I","G","A","D"],["D-6125","G","D","C","F","J","K","H","E","A","I","B"],["D-6126","E","H","D","F","K","A","B","I","G","J","C"],["D-6127","D","H","G","K","E","J","B","I","C","F","A"],["D-6128","G","K","C","H","D","A","I","J","E","F","B"],["D-6129","J","I","E","K","F","B","A","H","C","G","D"],["D-6130","E","B","D","F","H","A","G","K","I","J","C"],["D-6131","J","D","C","G","F","B","K","I","H","E","A"],["D-6132","I","E","D","B","J","K","F","G","A","H","C"],["D-6133","E","I","K","B","C","H","F","A","D","G","J"],["D-6134","D","E","I","B","F","G","C","A","H","K","J"],["D-6135","F","C","D","J","B","K","I","H","E","A","G"],["D-6136","C","G","B","K","E","D","A","H","I","J","F"],["D-6137","F","G","B","A","D","K","H","I","J","C","E"],["D-6138","H","I","A","E","G","C","F","D","K","B","J"],["D-6139","E","C","K","I","D","G","B","A","H","F","J"],["D-6140","A","E","F","C","K","H","G","D","J","I","B"],["D-6141","A","D","B","C","G","K","J","E","H","F","I"],["D-6142","K","J","D","G","H","A","C","F","I","B","E"],["D-6143","A","E","C","H","B","I","F","G","J","K","D"],["D-6144","B","C","J","A","D","K","H","I","F","G","E"],["D-6145","G","A","B","H","E","I","K","F","J","D","C"],["D-6146","B","C","H","I","D","F","K","E","G","J","A"],["D-6147","A","F","J","I","C","E","B","K","H","D","G"],["D-6148","I","C","A","D","E","K","J","H","B","G","F"],["D-6149","D","C","I","K","G","F","J","A","E","B","H"],["D-6150","J","K","F","A","G","H","D","C","I","E","B"],["D-6151","F","G","K","B","D","A","I","H","C","E","J"],["D-6152","D","C","A","J","F","H","K","B","E","G","I"],["D-6153","C","G","J","H","F","A","I","B","E","D","K"],["D-6154","B","H","A","G","C","J","E","K","F","D","I"],["D-6155","I","D","K","C","B","E","F","J","H","G","A"],["D-6156","E","B","F","C","H","D","A","I","K","J","G"],["D-6157","G","E","C","K","B","F","D","J","H","A","I"],["D-6158","H","I","F","C","E","J","K","A","G","B","D"],["D-6159","H","G","I","E","D","F","A","J","C","K","B"],["D-6160","C","H","G","D","J","A","F","B","I","E","K"],["D-6161","H","D","F","A","E","K","I","C","G","B","J"],["D-6162","F","K","C","I","A","J","B","H","E","D","G"],["D-6163","A","B","C","I","J","E","D","K","H","F","G"],["D-6164","G","J","D","E","B","H","K","F","C","I","A"],["D-6165","D","G","A","C","I","E","J","K","F","H","B"],["D-6166","B","F","G","D","J","C","H","A","E","K","I"],["D-6167","G","E","F","B","I","J","A","D","K","H","C"],["D-6168","D","J","H","E","B","I","F","K","C","G","A"],["D-6169","I","E","J","H","A","B","F","D","K","G","C"],["D-6170","E","F","C","B","G","H","K","D","A","I","J"],["D-6171","H","C","J","F","A","D","B","E","G","K","I"],["D-6172","H","D","F","B","J","C","G","K","I","E","A"],["D-6173","G","D","A","H","B","I","K","F","C","E","J"],["D-6174","F","I","D","A","J","B","C","H","K","G","E"],["D-6175","J","H","K","F","C","D","G","E","A","I","B"],["D-6176","F","H","G","J","C","E","K","I","A","B","D"],["D-6177","B","F","A","I","K","C","E","J","G","D","H"],["D-6178","D","F","B","E","C","G","K","J","A","I","H"],["D-6179","B","A","I","J","G","E","F","K","C","D","H"],["D-6180","H","I","F","J","B","E","C","G","K","D","A"],["D-6181","K","I","E","A","D","B","J","G","H","F","C"],["D-6182","C","J","A","I","E","G","F","H","D","K","B"],["D-6183","B","A","G","K","F","E","C","J","H","I","D"],["D-6184","I","D","E","F","G","J","B","H","C","K","A"],["D-6185","J","D","I","B","K","G","A","F","H","C","E"],["D-6186","D","A","E","B","F","C","G","J","H","I","K"],["D-6187","K","B","J","E","C","A","F","H","D","I","G"],["D-6188","H","I","G","B","C","E","A","K","F","J","D"],["D-6189","A","D","J","I","F","K","C","H","E","B","G"],["D-6190","I","H","G","J","A","D","F","K","C","B","E"],["D-6191","E","G","C","D","F","H","A","K","I","B","J"],["D-6192","I","H","A","E","G","D","J","B","C","K","F"],["D-6193","E","B","D","I","A","G","F","J","C","H","K"],["D-6194","G","J","I","A","K","F","C","E","D","H","B"],["D-6195","F","C","A","E","G","D","I","K","B","H","J"],["D-6196","A","C","F","K","E","H","G","J","B","I","D"],["D-6197","K","C","F","H","E","D","I","J","G","A","B"],["D-6198","B","K","C","D","H","A","G","F","I","E","J"],["D-6199","J","I","E","H","G","C","A","D","B","K","F"],["D-6200","D","F","I","C","J","G","H","B","K","E","A"],["D-6201","A","D","J","C","H","I","B","G","F","E","K"],["D-6202","B","J","G","H","A","C","K","F","E","D","I"],["D-6203","H","C","D","I","E","G","B","K","J","A","F"],["D-6204","G","J","B","D","C","K","I","H","E","A","F"],["D-6205","A","G","I","E","D","J","K","F","C","B","H"],["D-6206","D","C","H","J","G","I","B","F","E","A","K"],["D-6207","H","J","I","C","K","B","D","E","G","F","A"],["D-6208","E","K","F","C","J","A","D","B","G","H","I"],["D-6209","B","K","A","J","C","H","G","I","F","D","E"],["D-6210","G","D","A","J","H","I","E","C","F","B","K"],["D-6211","A","H","G","J","C","E","B","K","D","I","F"],["D-6212","K","B","D","C","I","F","E","A","G","H","J"],["D-6213","B","F","H","J","I","D","A","C","G","E","K"],["D-6214","D","H","C","F","G","J","K","I","A","B","E"],["D-6215","C","D","H","J","A","F","E","K","B","I","G"],["D-6216","I","F","J","H","D","A","B","E","C","G","K"],["D-6217","I","C","A","G","K","F","B","H","E","D","J"],["D-6218","K","G","H","E","D","I","C","J","B","A","F"],["D-6219","C","G","I","H","K","E","F","D","J","A","B"],["D-6220","G","B","C","K","H","F","I","D","E","A","J"],["D-6221","B","G","C","A","D","H","K","I","J","E","F"],["D-6222","G","C","H","J","E","F","B","K","I","D","A"],["D-6223","D","J","F","B","A","K","G","H","E","C","I"],["D-6224","K","C","D","I","B","A","J","H","E","G","F"],["D-6225","H","D","F","I","J","G","K","A","B","C","E"],["D-6226","A","K","J","D","E","B","H","F","G","I","C"],["D-6227","B","D","H","K","E","J","G","A","F","I","C"],["D-6228","D","A","J","F","K","G","I","B","H","E","C"],["D-6229","E","I","J","D","G","B","K","A","H","F","C"],["D-6230","E","I","J","A","F","G","D","C","K","B","H"],["D-6231","B","A","D","J","I","H","K","G","C","E","F"],["D-6232","C","B","J","H","A","F","K","E","G","I","D"],["D-6233","J","E","I","C","A","H","D","G","F","B","K"],["D-6234","H","D","I","C","A","K","F","J","G","E","B"],["D-6235","D","G","C","B","F","E","K","A","I","H","J"],["D-6236","B","A","K","J","H","C","G","D","E","I","F"],["D-6237","B","C","H","G","A","K","E","F","J","D","I"],["D-6238","B","A","J","C","E","G","D","K","H","F","I"],["D-6239","B","F","E","D","I","K","C","J","H","A","G"],["D-6240","H","G","I","J","K","A","E","D","C","F","B"],["D-6241","F","G","C","J","K","I","D","H","B","E","A"],["D-6242","G","J","A","I","B","K","C","H","D","E","F"],["D-6243","G","F","J","K","D","E","A","H","I","C","B"],["D-6244","I","D","J","A","K","F","B","E","C","G","H"],["D-6245","C","B","F","A","H","D","G","K","J","I","E"],["D-6246","E","I","D","G","K","F","B","C","A","J","H"],["D-6247","C","G","I","A","B","D","E","H","F","K","J"],["D-6248","D","J","E","K","I","F","C","B","H","G","A"],["D-6249","B","I","F","H","K","C","G","D","J","A","E"],["D-6250","B","I","G","H","J","D","C","K","E","F","A"]]},
+"scc_w_17":{label:"SCC Women — 17 candidates",electionName:"SCC Women",seats:4,candidates:{"A":"Anderson","B":"Baker","C":"Chen","D":"Davis","E":"Edwards","F":"Foster","G":"Garcia","H":"Harris","I":"Ibrahim","J":"Jackson","K":"Kim","L":"Lopez","M":"Martinez","N":"Nguyen","O":"O'Brien","P":"Patterson","Q":"Quinn"},ballots:[["D-6001","A","M","F","D","B","E","N","Q","C","G","L","I","J","O","K","H","P"],["D-6002","J","L","P","C","Q","K","G","B","A","N","F","M","E","H","O","D","I"],["D-6003","D","K","C","L","A","Q","H","N","M","F","G","E","B","P","I","J","O"],["D-6004","J","P","M","Q","I","N","F","H","G","D","B","A","O","C","E","L","K"],["D-6005","K","D","F","E","N","M","C","O","B","H","A","Q","P","L","G","I","J"],["D-6006","K","N","B","L","O","A","E","F","I","P","D","J","H","Q","C","M","G"],["D-6007","K","A","F","M","E","G","H","B","C","Q","N","L","I","J","D","O","P"],["D-6008","E","G","K","D","N","B","Q","H","I","M","O","P","L","F","C","J","A"],["D-6009","C","D","O","L","M","E","J","H","F","N","I","G","B","K","Q","P","A"],["D-6010","Q","D","N","F","C","J","B","H","K","A","I","M","O","P","G","L","E"],["D-6011","Q","H","A","K","F","D","J","C","I","P","E","B","O","M","N","G","L"],["D-6012","H","I","M","A","L","B","N","D","O","G","F","C","K","P","E","J","Q"],["D-6013","I","E","L","K","F","Q","G","J","M","N","H","C","P","A","O","B","D"],["D-6014","H","Q","K","D","L","G","J","I","P","B","C","N","E","O","A","M","F"],["D-6015","J","I","P","L","B","Q","H","E","O","F","K","A","D","C","M","N","G"],["D-6016","Q","L","K","G","D","B","O","E","I","F","C","J","M","N","A","P","H"],["D-6017","I","H","O","M","D","L","F","J","P","E","G","A","Q","B","N","C","K"],["D-6018","A","Q","I","L","G","C","B","O","N","P","E","K","M","J","H","F","D"],["D-6019","F","C","K","L","O","G","D","N","I","H","P","B","Q","A","M","E","J"],["D-6020","Q","K","D","N","H","I","E","A","P","F","G","L","O","M","B","J","C"],["D-6021","D","E","H","G","J","O","Q","F","N","L","I","P","A","M","B","C","K"],["D-6022","C","P","I","F","N","D","H","E","K","O","J","M","L","A","G","Q","B"],["D-6023","B","G","F","E","N","C","K","D","Q","M","H","P","L","J","O","A","I"],["D-6024","H","Q","C","E","I","L","P","F","K","D","J","O","A","N","M","G","B"],["D-6025","A","P","H","D","E","J","F","L","N","C","M","G","K","O","Q","I","B"],["D-6026","J","L","O","B","N","D","K","H","M","G","P","F","A","Q","I","E","C"],["D-6027","J","C","H","D","L","A","G","K","E","Q","N","B","M","P","I","F","O"],["D-6028","Q","F","A","C","N","I","M","L","E","G","B","J","D","H","P","O","K"],["D-6029","F","A","K","I","P","E","J","D","H","C","Q","G","B","L","M","N","O"],["D-6030","G","K","F","B","H","A","E","O","L","D","N","P","J","C","Q","M","I"],["D-6031","D","B","N","M","H","C","J","E","G","Q","P","O","L","A","K","I","F"],["D-6032","L","P","B","A","M","G","E","H","J","F","N","C","Q","O","I","K","D"],["D-6033","O","G","E","A","Q","L","D","K","J","I","M","H","C","N","B","P","F"],["D-6034","O","F","I","N","P","M","D","C","E","Q","J","K","L","B","G","A","H"],["D-6035","H","L","F","J","P","G","Q","N","C","B","A","K","D","I","O","E","M"],["D-6036","C","A","P","G","M","B","D","L","I","F","K","E","J","O","H","N","Q"],["D-6037","A","H","N","K","C","L","E","D","F","M","I","Q","B","G","J","O","P"],["D-6038","E","D","P","H","M","Q","A","N","K","I","G","F","C","J","B","O","L"],["D-6039","I","G","P","L","M","D","B","Q","E","C","H","A","F","N","O","K","J"],["D-6040","N","B","J","A","I","L","O","M","C","F","E","G","K","P","H","Q","D"],["D-6041","L","H","B","M","E","A","J","O","G","C","I","D","P","N","K","Q","F"],["D-6042","D","E","C","A","N","I","K","H","F","O","P","B","M","G","Q","L","J"],["D-6043","F","D","H","K","E","L","A","G","Q","B","O","M","J","I","N","P","C"],["D-6044","K","H","A","D","C","N","P","I","O","G","E","J","L","B","M","Q","F"],["D-6045","A","O","N","M","H","B","J","G","E","C","P","L","I","Q","K","D","F"],["D-6046","H","I","N","E","K","Q","O","M","C","J","B","L","A","P","G","F","D"],["D-6047","L","B","Q","O","N","I","E","P","A","F","C","D","G","M","K","H","J"],["D-6048","E","F","C","A","O","K","D","G","P","I","J","H","Q","N","L","M","B"],["D-6049","E","I","C","G","O","M","N","L","F","J","A","D","Q","P","H","B","K"],["D-6050","K","O","P","J","I","C","H","N","A","Q","L","G","F","D","M","E","B"],["D-6051","E","N","O","A","K","P","I","J","H","Q","F","B","D","M","L","G","C"],["D-6052","P","C","D","Q","J","L","H","G","M","K","E","O","A","B","I","N","F"],["D-6053","E","A","P","O","B","M","I","D","H","Q","N","L","J","F","G","C","K"],["D-6054","D","J","N","C","H","F","P","K","Q","M","G","I","E","O","L","B","A"],["D-6055","H","Q","C","G","N","L","D","K","O","F","A","I","P","B","M","E","J"],["D-6056","L","G","P","N","J","E","H","A","D","O","K","I","M","Q","B","C","F"],["D-6057","B","P","Q","D","J","A","C","H","L","F","G","O","N","I","K","M","E"],["D-6058","D","B","L","J","P","K","I","H","O","E","C","N","F","M","A","Q","G"],["D-6059","I","Q","A","M","G","B","C","J","K","N","D","F","O","E","L","H","P"],["D-6060","L","N","J","A","K","M","C","B","O","H","G","F","D","Q","I","P","E"],["D-6061","J","I","K","C","O","E","B","L","A","G","M","P","N","D","H","F","Q"],["D-6062","B","Q","C","N","G","L","J","F","H","E","O","D","A","P","K","M","I"],["D-6063","O","N","B","G","H","P","F","J","M","E","D","C","I","L","Q","A","K"],["D-6064","H","A","F","G","C","O","I","J","Q","P","E","D","B","M","L","K","N"],["D-6065","O","A","L","J","I","F","M","P","B","K","E","C","G","Q","H","N","D"],["D-6066","I","G","E","H","J","A","B","F","K","M","C","D","O","Q","L","N","P"],["D-6067","E","O","Q","L","B","M","H","G","C","I","A","J","D","N","K","F","P"],["D-6068","B","F","I","Q","O","P","L","M","H","E","A","N","G","D","K","C","J"],["D-6069","B","G","M","A","K","Q","J","C","H","L","F","I","O","N","E","P","D"],["D-6070","B","M","G","K","A","I","J","N","O","L","H","Q","E","D","C","F","P"],["D-6071","N","L","M","A","B","E","F","H","K","G","D","P","J","C","I","Q","O"],["D-6072","C","A","Q","F","O","H","B","P","N","K","J","G","D","L","I","M","E"],["D-6073","B","L","H","O","K","N","A","Q","D","G","M","F","I","J","C","E","P"],["D-6074","B","N","E","C","P","O","L","J","G","D","A","F","K","H","Q","I","M"],["D-6075","K","M","H","A","E","F","B","C","O","J","D","L","Q","P","G","N","I"],["D-6076","I","G","B","P","F","Q","E","L","M","A","C","K","O","N","H","J","D"],["D-6077","P","N","L","O","J","E","Q","C","H","I","M","B","A","K","F","G","D"],["D-6078","G","H","A","F","I","E","L","C","N","M","D","Q","B","P","K","J","O"],["D-6079","H","D","Q","M","K","E","L","F","J","I","B","A","C","O","G","P","N"],["D-6080","D","K","E","B","O","J","C","A","P","I","N","Q","G","M","L","H","F"],["D-6081","J","O","F","E","L","A","P","D","M","K","I","C","H","G","Q","B","N"],["D-6082","A","J","D","N","Q","I","C","O","K","B","M","F","P","E","G","L","H"],["D-6083","Q","E","H","O","A","M","B","F","C","G","D","N","I","J","P","L","K"],["D-6084","O","G","N","P","E","I","B","D","C","F","Q","A","K","L","J","H","M"],["D-6085","M","E","P","O","A","N","J","I","Q","D","C","B","G","H","F","K","L"],["D-6086","L","E","N","G","J","A","P","Q","H","C","O","K","F","D","I","M","B"],["D-6087","E","L","Q","A","M","O","J","F","C","G","I","B","P","D","K","N","H"],["D-6088","N","D","G","J","O","Q","B","E","I","C","M","K","A","P","H","F","L"],["D-6089","K","M","Q","H","I","L","C","G","E","O","F","J","B","P","A","D","N"],["D-6090","H","M","C","O","N","K","P","G","F","Q","B","E","I","J","L","D","A"],["D-6091","B","N","G","E","A","F","P","I","J","L","Q","D","K","O","M","H","C"],["D-6092","C","I","K","Q","A","B","M","G","D","N","F","H","L","J","E","O","P"],["D-6093","O","J","E","L","I","C","F","B","D","P","M","K","H","Q","A","G","N"],["D-6094","O","P","Q","H","F","G","M","I","K","C","A","L","N","E","D","B","J"],["D-6095","G","K","A","H","D","O","L","I","J","N","M","P","B","C","E","Q","F"],["D-6096","K","F","O","N","P","E","Q","B","D","M","G","C","I","H","J","A","L"],["D-6097","G","P","H","C","B","K","A","L","Q","O","E","J","D","F","I","M","N"],["D-6098","D","O","N","A","H","I","F","M","E","G","P","C","K","L","J","B","Q"],["D-6099","A","M","I","G","E","J","Q","C","O","K","B","P","L","D","H","F","N"],["D-6100","D","G","F","H","J","I","A","M","K","Q","E","C","B","N","L","O","P"],["D-6101","E","A","F","G","D","H","I","C","L","M","B","K","J","Q","P","N","O"],["D-6102","O","E","L","J","C","H","M","I","P","Q","B","A","N","D","G","K","F"],["D-6103","E","N","B","J","A","M","P","F","Q","D","I","C","K","H","O","G","L"],["D-6104","C","P","F","D","J","E","B","H","M","O","A","L","I","K","Q","N","G"],["D-6105","K","M","L","G","F","P","N","Q","A","O","D","J","B","E","H","I","C"],["D-6106","D","P","G","J","F","L","M","A","C","H","Q","N","O","K","E","B","I"],["D-6107","C","N","D","P","A","G","K","H","F","Q","O","B","I","L","E","J","M"],["D-6108","M","D","O","Q","K","C","F","A","N","H","I","E","G","B","L","J","P"],["D-6109","L","B","M","C","D","J","P","A","K","N","I","F","E","H","Q","G","O"],["D-6110","F","M","I","G","O","K","Q","E","N","J","A","H","D","C","B","P","L"],["D-6111","M","I","K","E","B","J","N","G","Q","D","H","C","L","P","F","O","A"],["D-6112","G","D","K","O","B","E","P","L","Q","C","F","M","J","I","A","H","N"],["D-6113","M","B","Q","F","K","O","A","D","E","G","C","L","J","H","N","P","I"],["D-6114","O","M","D","Q","A","P","K","B","H","N","L","G","F","J","C","I","E"],["D-6115","J","O","D","K","Q","C","B","L","I","N","E","P","H","A","M","G","F"],["D-6116","H","A","L","D","O","P","M","N","F","G","B","C","E","I","Q","J","K"],["D-6117","B","G","H","I","P","D","E","O","A","N","L","M","F","C","Q","K","J"],["D-6118","C","J","H","I","A","L","Q","E","K","G","P","D","B","F","O","N","M"],["D-6119","G","I","Q","F","M","C","D","B","H","J","N","O","P","L","E","A","K"],["D-6120","A","B","Q","I","J","C","D","O","E","L","M","H","G","N","K","F","P"],["D-6121","H","Q","I","D","K","E","B","C","N","L","O","A","M","P","F","G","J"],["D-6122","F","J","N","B","H","D","O","C","G","I","P","E","Q","K","A","L","M"],["D-6123","J","H","O","F","D","L","C","B","N","I","G","P","E","K","A","M","Q"],["D-6124","K","E","O","J","F","D","I","L","H","B","A","M","G","N","Q","P","C"],["D-6125","C","F","B","J","K","E","I","H","Q","L","O","N","D","M","P","G","A"],["D-6126","Q","N","P","F","M","I","L","E","C","H","D","O","B","A","G","K","J"],["D-6127","P","E","K","Q","A","J","B","O","G","M","H","F","N","C","I","D","L"],["D-6128","G","K","N","J","P","A","D","E","H","I","Q","B","L","C","O","M","F"],["D-6129","A","M","N","C","I","F","B","J","E","O","D","P","L","G","H","Q","K"],["D-6130","Q","E","F","K","A","N","P","G","I","O","C","J","D","B","M","H","L"],["D-6131","P","C","B","A","I","H","N","O","D","Q","J","K","E","M","F","G","L"],["D-6132","A","J","P","H","F","D","N","L","Q","B","E","I","O","K","G","M","C"],["D-6133","E","F","N","B","M","A","D","J","O","H","I","Q","K","G","L","P","C"],["D-6134","Q","G","M","D","E","H","F","P","L","B","J","O","I","A","N","K","C"],["D-6135","C","O","B","I","G","A","E","M","H","Q","K","D","F","J","L","N","P"],["D-6136","B","L","J","O","M","F","A","Q","N","H","C","P","G","K","D","I","E"],["D-6137","A","E","Q","P","G","H","F","B","J","K","D","L","C","I","O","M","N"],["D-6138","A","K","N","O","H","M","L","G","F","P","J","C","I","B","Q","D","E"],["D-6139","N","E","O","C","L","P","K","H","M","B","F","D","A","J","Q","G","I"],["D-6140","A","C","H","D","N","E","F","O","J","B","K","L","Q","G","I","P","M"],["D-6141","K","A","D","C","Q","L","H","B","P","M","E","J","I","O","G","N","F"],["D-6142","O","C","G","J","A","L","K","H","Q","M","E","F","B","P","D","I","N"],["D-6143","L","H","J","O","B","E","M","N","P","Q","A","K","F","C","G","I","D"],["D-6144","C","B","L","N","P","O","D","F","Q","E","A","H","G","M","I","J","K"],["D-6145","F","L","A","I","B","E","M","H","P","J","K","O","C","Q","D","N","G"],["D-6146","I","G","H","L","C","M","K","B","P","E","F","A","D","O","N","J","Q"],["D-6147","L","J","F","O","N","H","G","K","C","P","E","Q","M","I","A","D","B"],["D-6148","M","Q","N","P","L","K","H","B","O","E","C","A","I","D","J","F","G"],["D-6149","P","A","O","C","L","B","J","G","I","F","D","N","K","M","H","E","Q"],["D-6150","M","O","H","J","F","D","A","I","Q","N","C","P","K","E","L","G","B"],["D-6151","G","C","N","Q","I","H","K","A","B","D","E","P","F","L","O","M","J"],["D-6152","I","K","P","O","B","A","Q","M","J","G","L","F","H","E","N","C","D"],["D-6153","N","I","A","P","K","Q","L","F","E","C","G","M","B","D","J","H","O"],["D-6154","I","L","J","O","D","P","E","K","A","M","G","N","C","Q","B","F","H"],["D-6155","P","F","J","K","E","N","A","O","D","M","L","G","C","Q","B","I","H"],["D-6156","N","E","A","C","B","O","I","M","P","F","K","G","Q","H","L","D","J"],["D-6157","P","C","K","B","G","A","D","O","M","E","H","L","F","Q","I","N","J"],["D-6158","I","M","Q","F","L","C","O","N","B","D","K","G","H","A","J","E","P"],["D-6159","O","C","F","D","Q","L","K","E","A","H","M","B","P","N","G","I","J"],["D-6160","O","H","G","M","F","B","C","K","D","J","Q","A","E","L","N","P","I"],["D-6161","M","L","F","E","J","C","P","A","G","Q","I","N","B","H","K","D","O"],["D-6162","N","K","F","O","E","H","D","G","C","Q","I","J","A","P","M","B","L"],["D-6163","Q","F","H","D","M","J","G","L","O","K","A","I","C","B","P","N","E"],["D-6164","Q","O","K","J","B","M","H","P","N","A","L","I","G","E","F","D","C"],["D-6165","O","M","G","A","Q","E","C","D","L","B","K","F","J","I","N","H","P"],["D-6166","A","G","P","J","O","D","C","L","E","N","K","B","I","M","F","H","Q"],["D-6167","B","H","J","I","L","N","E","D","M","A","F","G","K","P","C","Q","O"],["D-6168","N","C","K","L","E","I","H","A","J","Q","P","M","O","G","B","D","F"],["D-6169","P","O","I","M","N","L","J","C","D","H","Q","E","F","G","K","B","A"],["D-6170","P","I","L","E","B","F","O","D","A","C","G","M","J","N","H","Q","K"],["D-6171","L","B","O","J","E","M","D","Q","C","N","A","G","P","K","I","F","H"],["D-6172","J","P","M","K","G","I","B","A","E","N","O","L","D","C","F","Q","H"],["D-6173","M","O","A","D","Q","B","G","E","C","I","F","L","N","H","K","J","P"],["D-6174","C","L","J","H","D","A","K","P","N","M","B","Q","G","E","F","I","O"],["D-6175","P","C","G","I","M","E","H","N","B","L","O","K","D","J","F","Q","A"],["D-6176","E","M","F","O","C","K","D","A","H","Q","I","J","G","P","L","N","B"],["D-6177","E","K","N","A","G","C","M","P","I","B","H","L","Q","D","J","O","F"],["D-6178","H","P","M","K","Q","J","E","D","L","I","B","G","O","F","C","N","A"],["D-6179","I","H","M","E","G","K","N","B","O","F","C","L","P","J","A","Q","D"],["D-6180","L","H","C","F","K","J","A","D","P","G","N","B","I","Q","O","E","M"],["D-6181","M","C","N","Q","P","I","L","B","G","H","A","J","D","F","O","K","E"],["D-6182","M","K","H","L","G","P","A","C","J","E","B","Q","F","O","D","N","I"],["D-6183","G","O","N","C","J","Q","I","D","B","F","P","K","L","H","A","E","M"],["D-6184","J","G","H","B","E","L","F","O","P","K","A","Q","N","D","C","M","I"],["D-6185","O","E","G","D","M","Q","P","C","F","N","H","A","J","L","B","K","I"],["D-6186","A","K","F","E","M","I","N","J","Q","O","P","B","L","C","D","H","G"],["D-6187","O","N","B","A","P","L","D","I","H","Q","J","K","E","G","F","M","C"],["D-6188","A","E","B","O","L","M","D","C","K","I","F","N","H","G","P","Q","J"],["D-6189","O","H","E","N","C","P","Q","M","L","B","J","F","I","D","A","K","G"],["D-6190","M","F","Q","I","L","N","K","P","O","B","A","J","D","H","C","G","E"],["D-6191","L","Q","G","B","C","D","A","H","K","N","E","P","O","J","F","M","I"],["D-6192","I","A","M","Q","L","P","H","K","O","D","G","C","F","E","N","J","B"],["D-6193","F","N","B","M","I","O","D","L","P","E","H","Q","G","K","A","J","C"],["D-6194","D","H","I","P","O","Q","G","K","A","B","L","J","E","C","F","M","N"],["D-6195","F","H","P","K","C","A","Q","J","I","G","D","O","N","B","L","M","E"],["D-6196","H","A","M","B","Q","E","L","J","G","K","F","O","D","I","C","N","P"],["D-6197","F","K","C","O","J","I","A","P","N","M","Q","G","D","H","B","E","L"],["D-6198","H","N","Q","L","O","C","D","K","A","B","G","F","I","M","E","J","P"],["D-6199","N","M","D","B","F","H","P","L","Q","G","I","O","K","J","A","C","E"],["D-6200","G","K","N","O","H","D","F","I","J","M","B","L","P","A","Q","E","C"],["D-6201","J","P","G","I","E","M","A","L","Q","F","K","H","D","N","B","O","C"],["D-6202","C","P","Q","O","J","H","N","I","M","L","A","E","G","K","D","B","F"],["D-6203","J","G","H","O","L","P","K","D","E","Q","N","I","C","B","A","F","M"],["D-6204","H","M","O","F","I","D","G","Q","P","L","B","E","A","J","C","K","N"],["D-6205","N","B","D","I","J","P","F","C","G","L","Q","H","E","K","M","A","O"],["D-6206","H","K","A","L","D","I","F","J","O","M","C","E","G","N","Q","B","P"],["D-6207","M","A","Q","H","F","G","C","P","K","D","N","L","O","B","J","E","I"],["D-6208","I","Q","G","J","F","B","H","D","L","E","N","M","K","P","A","O","C"],["D-6209","O","I","M","C","Q","K","A","H","F","E","J","P","B","D","L","G","N"],["D-6210","P","L","F","D","K","A","C","I","E","O","J","M","G","Q","B","H","N"],["D-6211","H","J","L","C","F","E","O","N","I","K","Q","G","P","A","D","M","B"],["D-6212","L","D","K","G","F","M","P","I","C","J","N","E","B","Q","O","H","A"],["D-6213","C","I","H","G","Q","K","A","N","L","D","J","M","O","B","P","E","F"],["D-6214","Q","N","L","K","B","P","D","A","E","H","G","J","O","I","C","F","M"],["D-6215","L","A","I","K","B","M","C","D","G","F","P","O","H","N","Q","J","E"],["D-6216","C","L","I","O","G","H","E","Q","F","K","M","B","N","P","D","A","J"],["D-6217","I","D","N","M","P","O","A","H","L","Q","E","F","C","K","J","G","B"],["D-6218","H","F","D","N","B","G","K","I","J","Q","E","M","A","L","C","O","P"],["D-6219","B","O","C","J","A","D","K","H","P","I","Q","E","N","G","F","M","L"],["D-6220","K","O","M","Q","H","C","J","A","E","B","P","F","D","L","N","G","I"],["D-6221","F","N","B","C","J","K","L","E","H","G","Q","O","M","P","A","I","D"],["D-6222","L","E","P","Q","C","K","G","M","A","I","D","O","J","F","H","B","N"],["D-6223","H","C","D","I","L","A","M","K","J","Q","P","N","E","F","O","B","G"],["D-6224","O","A","E","Q","M","I","C","D","H","N","B","G","K","P","J","F","L"],["D-6225","J","I","D","G","H","P","B","O","L","C","A","Q","M","K","E","F","N"],["D-6226","M","Q","N","K","G","F","C","O","E","B","D","H","J","L","I","A","P"],["D-6227","G","C","A","K","Q","E","D","M","H","O","P","F","J","B","N","I","L"],["D-6228","E","A","D","M","J","I","P","F","Q","L","H","B","G","O","N","K","C"],["D-6229","O","N","I","Q","F","K","P","E","A","M","L","B","G","D","H","J","C"],["D-6230","K","I","F","O","H","E","M","B","Q","J","D","N","A","P","G","L","C"],["D-6231","H","K","F","M","B","I","Q","O","G","N","A","E","L","P","J","D","C"],["D-6232","C","I","O","Q","F","H","L","A","J","D","M","P","E","G","K","B","N"],["D-6233","A","G","D","H","K","L","O","P","M","J","N","B","E","Q","C","F","I"],["D-6234","A","M","B","D","P","N","Q","O","K","F","G","E","L","H","J","C","I"],["D-6235","F","G","E","A","H","N","O","C","Q","L","M","K","P","B","D","J","I"],["D-6236","Q","J","P","I","H","N","K","D","L","F","E","B","G","O","M","A","C"],["D-6237","J","B","G","K","E","O","D","H","P","L","F","C","N","I","Q","M","A"],["D-6238","K","C","N","E","Q","A","G","I","H","F","P","L","B","D","J","M","O"],["D-6239","K","O","G","I","L","H","N","M","P","F","D","A","E","C","Q","B","J"],["D-6240","P","H","G","D","O","L","C","J","Q","K","I","M","B","N","E","F","A"],["D-6241","C","L","Q","E","D","N","M","H","K","O","I","P","F","B","G","A","J"],["D-6242","Q","K","I","N","F","O","A","M","G","H","E","P","L","D","C","J","B"],["D-6243","H","J","I","O","F","M","G","Q","P","L","D","B","K","C","A","E","N"],["D-6244","E","K","P","F","O","C","Q","H","A","D","B","G","L","N","I","M","J"],["D-6245","N","C","J","E","Q","A","D","H","O","I","B","K","F","L","G","M","P"],["D-6246","P","J","M","B","I","C","A","E","N","Q","F","G","O","D","L","K","H"],["D-6247","L","E","A","J","G","I","D","K","M","P","H","F","O","N","Q","C","B"],["D-6248","I","F","N","L","Q","D","E","B","C","O","G","P","M","H","A","J","K"],["D-6249","Q","P","A","M","H","K","C","I","G","E","O","L","F","B","J","N","D"],["D-6250","Q","H","J","G","B","C","K","N","P","M","A","L","F","D","E","O","I"]]},
+"scc_mnb_6":{label:"SCC Men/Non-Binary — 6 candidates",electionName:"SCC Men/Non-Binary",seats:4,candidates:{"A":"Adams","B":"Brooks","C":"Clark","D":"Dunn","E":"Ellis","F":"Franklin"},ballots:[["D-6001","E","F","C","B","A","D"],["D-6002","B","F","D","C","A","E"],["D-6003","D","C","F","A","B","E"],["D-6004","D","E","F","A","B","C"],["D-6005","B","E","F","D","C","A"],["D-6006","E","D","C","B","A","F"],["D-6007","E","C","A","F","B","D"],["D-6008","F","C","D","B","A","E"],["D-6009","F","A","B","D","E","C"],["D-6010","C","A","B","D","E","F"],["D-6011","C","A","E","B","D","F"],["D-6012","A","B","D","C","F","E"],["D-6013","C","A","F","E","B","D"],["D-6014","C","D","E","B","F","A"],["D-6015","A","E","D","C","B","F"],["D-6016","A","E","B","F","D","C"],["D-6017","B","E","C","A","D","F"],["D-6018","C","B","F","E","A","D"],["D-6019","D","A","E","C","B","F"],["D-6020","F","A","B","D","E","C"],["D-6021","B","E","F","A","C","D"],["D-6022","B","A","F","C","E","D"],["D-6023","F","D","B","C","E","A"],["D-6024","B","A","D","E","F","C"],["D-6025","B","F","E","A","D","C"],["D-6026","D","E","C","A","F","B"],["D-6027","A","B","C","D","E","F"],["D-6028","A","F","C","E","D","B"],["D-6029","C","E","A","F","B","D"],["D-6030","D","A","C","B","F","E"],["D-6031","E","A","C","D","B","F"],["D-6032","A","F","D","C","B","E"],["D-6033","E","C","B","F","D","A"],["D-6034","E","C","A","D","B","F"],["D-6035","B","C","F","E","D","A"],["D-6036","F","E","C","D","B","A"],["D-6037","F","C","B","A","D","E"],["D-6038","E","B","C","D","A","F"],["D-6039","B","A","D","F","C","E"],["D-6040","B","F","D","C","A","E"],["D-6041","F","C","E","A","B","D"],["D-6042","E","B","C","F","A","D"],["D-6043","B","A","C","F","D","E"],["D-6044","C","B","D","F","A","E"],["D-6045","B","A","F","C","E","D"],["D-6046","C","D","F","B","E","A"],["D-6047","E","C","F","D","A","B"],["D-6048","E","D","B","F","A","C"],["D-6049","C","F","A","E","B","D"],["D-6050","F","C","D","A","B","E"],["D-6051","E","D","F","B","A","C"],["D-6052","A","B","C","E","F","D"],["D-6053","A","C","D","B","E","F"],["D-6054","D","B","E","C","F","A"],["D-6055","E","D","F","C","A","B"],["D-6056","D","E","A","C","B","F"],["D-6057","B","C","A","F","D","E"],["D-6058","D","A","C","E","F","B"],["D-6059","C","E","F","A","D","B"],["D-6060","A","F","C","D","E","B"],["D-6061","F","B","C","E","D","A"],["D-6062","A","E","F","B","C","D"],["D-6063","F","C","A","D","E","B"],["D-6064","F","C","D","E","A","B"],["D-6065","C","E","B","F","D","A"],["D-6066","F","C","A","E","B","D"],["D-6067","B","E","C","D","F","A"],["D-6068","B","E","A","C","F","D"],["D-6069","D","E","B","C","A","F"],["D-6070","A","E","B","C","D","F"],["D-6071","A","B","F","E","C","D"],["D-6072","A","E","D","B","F","C"],["D-6073","E","F","A","D","B","C"],["D-6074","D","B","A","C","E","F"],["D-6075","D","F","E","B","A","C"],["D-6076","C","B","F","D","A","E"],["D-6077","B","F","A","E","C","D"],["D-6078","C","E","A","B","F","D"],["D-6079","B","A","D","E","F","C"],["D-6080","E","F","B","D","A","C"],["D-6081","F","B","D","E","C","A"],["D-6082","E","C","A","D","F","B"],["D-6083","A","C","D","B","E","F"],["D-6084","E","B","D","C","A","F"],["D-6085","A","C","E","B","F","D"],["D-6086","E","F","B","C","D","A"],["D-6087","E","B","A","F","C","D"],["D-6088","F","A","D","B","C","E"],["D-6089","A","B","F","D","C","E"],["D-6090","A","E","B","F","C","D"],["D-6091","F","E","B","A","C","D"],["D-6092","B","F","C","D","E","A"],["D-6093","A","C","D","B","E","F"],["D-6094","E","F","A","C","D","B"],["D-6095","A","B","F","E","C","D"],["D-6096","E","A","D","C","F","B"],["D-6097","C","B","D","E","A","F"],["D-6098","D","B","C","E","F","A"],["D-6099","F","C","A","D","E","B"],["D-6100","B","C","E","A","D","F"],["D-6101","D","C","B","F","E","A"],["D-6102","F","E","C","B","A","D"],["D-6103","A","B","E","C","F","D"],["D-6104","F","C","E","B","A","D"],["D-6105","B","F","C","A","E","D"],["D-6106","D","E","F","C","B","A"],["D-6107","E","D","C","A","B","F"],["D-6108","F","A","C","E","B","D"],["D-6109","A","F","B","E","C","D"],["D-6110","F","B","D","A","C","E"],["D-6111","F","D","E","B","A","C"],["D-6112","B","A","E","C","F","D"],["D-6113","B","E","D","F","A","C"],["D-6114","A","C","B","E","F","D"],["D-6115","C","E","D","F","A","B"],["D-6116","A","B","E","F","C","D"],["D-6117","A","F","E","C","B","D"],["D-6118","A","C","E","B","D","F"],["D-6119","F","A","E","C","D","B"],["D-6120","B","C","A","E","F","D"],["D-6121","E","A","F","B","C","D"],["D-6122","A","F","E","C","B","D"],["D-6123","B","E","A","F","D","C"],["D-6124","E","A","F","B","D","C"],["D-6125","B","F","C","A","E","D"],["D-6126","F","D","B","E","C","A"],["D-6127","A","C","F","E","B","D"],["D-6128","B","F","D","C","A","E"],["D-6129","F","E","B","A","C","D"],["D-6130","F","D","B","A","E","C"],["D-6131","C","B","A","F","E","D"],["D-6132","D","A","C","E","B","F"],["D-6133","E","D","B","C","A","F"],["D-6134","D","C","B","A","F","E"],["D-6135","B","C","F","D","E","A"],["D-6136","D","E","A","F","B","C"],["D-6137","B","E","C","D","A","F"],["D-6138","C","F","E","D","A","B"],["D-6139","B","C","D","F","E","A"],["D-6140","A","C","D","B","E","F"],["D-6141","F","A","E","C","D","B"],["D-6142","B","C","D","F","A","E"],["D-6143","E","C","B","D","F","A"],["D-6144","E","F","B","C","D","A"],["D-6145","D","B","F","C","E","A"],["D-6146","E","A","B","C","F","D"],["D-6147","D","A","B","E","F","C"],["D-6148","B","C","A","E","D","F"],["D-6149","B","F","C","E","A","D"],["D-6150","B","C","F","A","D","E"],["D-6151","C","F","E","B","D","A"],["D-6152","F","D","C","B","A","E"],["D-6153","F","E","D","A","B","C"],["D-6154","E","B","C","D","A","F"],["D-6155","F","D","B","C","E","A"],["D-6156","F","E","D","B","A","C"],["D-6157","A","C","F","B","D","E"],["D-6158","F","A","C","E","B","D"],["D-6159","B","C","E","A","F","D"],["D-6160","D","C","E","A","F","B"],["D-6161","C","F","E","D","A","B"],["D-6162","E","C","F","B","A","D"],["D-6163","A","E","C","B","D","F"],["D-6164","C","F","E","A","D","B"],["D-6165","C","B","A","F","E","D"],["D-6166","D","A","C","F","B","E"],["D-6167","A","D","B","C","E","F"],["D-6168","D","A","C","B","E","F"],["D-6169","A","F","E","B","C","D"],["D-6170","F","A","B","C","D","E"],["D-6171","C","B","D","A","E","F"],["D-6172","C","F","E","A","B","D"],["D-6173","D","F","E","C","A","B"],["D-6174","A","C","E","D","F","B"],["D-6175","A","F","D","B","E","C"],["D-6176","A","C","E","F","D","B"],["D-6177","F","C","B","A","D","E"],["D-6178","A","C","F","E","B","D"],["D-6179","C","F","A","B","E","D"],["D-6180","A","B","E","F","D","C"],["D-6181","E","A","B","F","C","D"],["D-6182","E","F","D","A","C","B"],["D-6183","F","D","C","E","A","B"],["D-6184","E","D","A","C","B","F"],["D-6185","D","A","C","B","E","F"],["D-6186","E","B","C","D","A","F"],["D-6187","A","F","B","E","C","D"],["D-6188","A","D","F","C","E","B"],["D-6189","C","F","A","B","E","D"],["D-6190","C","D","A","E","B","F"],["D-6191","D","B","C","E","A","F"],["D-6192","A","B","C","F","D","E"],["D-6193","D","A","C","B","F","E"],["D-6194","A","E","C","D","F","B"],["D-6195","D","E","C","F","B","A"],["D-6196","F","A","C","E","B","D"],["D-6197","B","D","A","E","F","C"],["D-6198","A","E","C","B","F","D"],["D-6199","A","B","F","D","C","E"],["D-6200","A","F","B","E","C","D"],["D-6201","B","E","A","D","F","C"],["D-6202","D","F","B","A","C","E"],["D-6203","F","C","B","A","D","E"],["D-6204","D","C","A","B","F","E"],["D-6205","A","D","C","B","F","E"],["D-6206","D","B","C","F","A","E"],["D-6207","B","E","F","D","C","A"],["D-6208","B","F","C","D","E","A"],["D-6209","A","F","B","D","C","E"],["D-6210","C","D","E","A","F","B"],["D-6211","D","C","B","A","E","F"],["D-6212","F","B","C","D","A","E"],["D-6213","F","D","A","C","E","B"],["D-6214","B","C","A","D","E","F"],["D-6215","C","F","D","B","A","E"],["D-6216","C","F","A","D","E","B"],["D-6217","D","E","B","F","A","C"],["D-6218","B","C","A","E","F","D"],["D-6219","A","E","C","D","F","B"],["D-6220","D","E","C","B","F","A"],["D-6221","D","E","F","A","C","B"],["D-6222","F","A","B","C","D","E"],["D-6223","E","F","D","B","A","C"],["D-6224","F","E","B","C","A","D"],["D-6225","B","A","C","D","E","F"],["D-6226","B","E","C","A","F","D"],["D-6227","D","B","F","A","C","E"],["D-6228","B","D","E","C","A","F"],["D-6229","D","A","B","E","C","F"],["D-6230","F","B","E","D","C","A"],["D-6231","A","D","E","B","F","C"],["D-6232","D","A","E","B","F","C"],["D-6233","F","E","C","A","D","B"],["D-6234","B","F","A","E","D","C"],["D-6235","A","F","C","E","B","D"],["D-6236","D","E","C","A","F","B"],["D-6237","A","B","D","F","C","E"],["D-6238","D","F","A","B","E","C"],["D-6239","A","B","C","D","F","E"],["D-6240","A","C","E","D","B","F"],["D-6241","C","B","F","E","D","A"],["D-6242","A","C","F","D","E","B"],["D-6243","D","B","E","C","F","A"],["D-6244","A","F","D","E","C","B"],["D-6245","F","B","D","E","C","A"],["D-6246","A","C","E","D","B","F"],["D-6247","B","E","D","F","A","C"],["D-6248","E","B","C","F","D","A"],["D-6249","C","A","D","B","F","E"],["D-6250","A","F","D","E","C","B"]]},
+"scc_mnb_11":{label:"SCC Men/Non-Binary — 11 candidates",electionName:"SCC Men/Non-Binary",seats:4,candidates:{"A":"Adams","B":"Brooks","C":"Clark","D":"Dunn","E":"Ellis","F":"Franklin","G":"Grant","H":"Hayes","I":"Ingram","J":"Jensen","K":"Kumar"},ballots:[["D-6001","I","C","H","D","B","A","G","K","F","E","J"],["D-6002","G","I","A","F","H","E","J","K","D","B","C"],["D-6003","I","D","F","E","H","B","C","A","G","K","J"],["D-6004","G","B","K","H","C","I","E","D","F","J","A"],["D-6005","G","D","A","F","K","I","B","E","H","C","J"],["D-6006","A","H","K","E","D","C","G","J","I","B","F"],["D-6007","J","K","G","F","A","I","B","C","H","E","D"],["D-6008","H","K","E","G","C","D","A","J","B","I","F"],["D-6009","E","G","C","A","D","B","J","K","F","H","I"],["D-6010","H","B","C","J","K","G","E","A","D","I","F"],["D-6011","A","K","C","I","J","B","G","F","E","D","H"],["D-6012","B","K","H","I","A","C","F","J","D","E","G"],["D-6013","A","K","B","I","H","J","D","E","C","F","G"],["D-6014","K","H","J","F","B","E","D","G","A","I","C"],["D-6015","H","D","G","K","E","J","I","A","B","C","F"],["D-6016","D","F","C","K","A","E","B","G","J","I","H"],["D-6017","A","F","J","D","G","C","H","I","K","E","B"],["D-6018","K","E","J","C","A","G","H","D","B","I","F"],["D-6019","K","I","J","A","C","D","B","G","H","E","F"],["D-6020","H","B","G","E","I","J","D","C","A","F","K"],["D-6021","F","H","I","D","A","K","C","E","J","B","G"],["D-6022","I","F","E","D","G","A","J","B","H","K","C"],["D-6023","E","I","G","K","J","F","D","B","A","C","H"],["D-6024","D","J","B","A","F","G","I","C","K","H","E"],["D-6025","I","B","D","K","C","E","A","F","H","J","G"],["D-6026","I","J","K","B","A","H","F","G","E","D","C"],["D-6027","J","I","A","F","C","K","G","H","B","E","D"],["D-6028","J","B","G","A","H","C","I","E","F","D","K"],["D-6029","E","K","I","A","G","B","H","D","F","J","C"],["D-6030","I","K","D","G","B","A","J","F","E","H","C"],["D-6031","D","J","I","K","C","H","F","G","B","A","E"],["D-6032","I","G","K","A","C","J","F","H","D","B","E"],["D-6033","C","K","A","D","F","E","H","I","G","J","B"],["D-6034","C","A","K","H","D","F","J","B","I","G","E"],["D-6035","E","K","H","A","G","B","C","J","I","F","D"],["D-6036","J","K","F","B","E","G","H","A","I","C","D"],["D-6037","D","H","K","G","I","B","C","E","A","J","F"],["D-6038","F","H","A","C","G","D","K","E","B","J","I"],["D-6039","J","I","D","E","C","F","G","A","K","B","H"],["D-6040","B","C","A","I","K","E","H","G","F","D","J"],["D-6041","B","E","I","F","H","G","A","D","J","K","C"],["D-6042","H","E","F","D","B","K","J","C","I","A","G"],["D-6043","G","J","I","A","H","E","C","B","D","K","F"],["D-6044","H","E","K","B","F","I","G","A","C","D","J"],["D-6045","K","J","B","F","I","E","C","A","D","H","G"],["D-6046","J","I","D","B","G","E","K","H","A","C","F"],["D-6047","J","A","I","H","C","E","B","K","D","G","F"],["D-6048","J","F","G","E","I","B","D","H","A","K","C"],["D-6049","J","H","G","A","E","F","B","D","K","C","I"],["D-6050","H","G","A","D","I","J","C","B","E","F","K"],["D-6051","H","C","I","K","A","B","E","D","F","J","G"],["D-6052","I","A","K","D","J","B","E","F","G","C","H"],["D-6053","E","G","C","I","A","F","K","J","B","H","D"],["D-6054","D","J","F","I","E","G","H","C","K","A","B"],["D-6055","B","F","H","C","I","E","A","K","G","D","J"],["D-6056","C","A","I","E","K","F","G","B","H","J","D"],["D-6057","G","J","I","F","H","B","A","E","K","C","D"],["D-6058","E","D","F","K","I","G","H","B","J","C","A"],["D-6059","I","D","A","B","K","G","J","E","H","C","F"],["D-6060","G","J","A","C","F","H","I","E","K","B","D"],["D-6061","D","A","K","E","C","I","B","F","G","H","J"],["D-6062","G","I","F","H","E","D","A","B","J","K","C"],["D-6063","K","I","D","H","C","B","E","G","J","F","A"],["D-6064","I","C","H","K","E","A","G","D","B","F","J"],["D-6065","J","H","D","B","G","F","K","A","I","E","C"],["D-6066","F","A","B","C","H","G","J","E","I","D","K"],["D-6067","I","D","K","H","E","C","F","A","J","G","B"],["D-6068","F","C","G","H","I","J","K","E","D","A","B"],["D-6069","J","C","E","A","H","G","B","K","D","F","I"],["D-6070","J","A","H","I","D","F","C","B","K","E","G"],["D-6071","D","H","F","I","A","E","K","C","G","B","J"],["D-6072","G","D","J","H","F","C","B","I","K","E","A"],["D-6073","K","H","F","E","G","J","B","A","C","D","I"],["D-6074","D","G","F","H","J","E","C","I","K","B","A"],["D-6075","E","K","F","D","B","G","J","H","A","C","I"],["D-6076","H","F","C","G","B","I","E","J","D","K","A"],["D-6077","J","D","B","C","G","I","F","A","E","K","H"],["D-6078","K","G","I","F","J","E","H","C","A","B","D"],["D-6079","H","J","G","D","C","I","K","E","B","F","A"],["D-6080","D","F","C","I","E","K","A","H","G","B","J"],["D-6081","C","I","H","E","J","F","B","K","A","G","D"],["D-6082","D","B","E","C","A","J","H","I","G","F","K"],["D-6083","K","F","D","E","B","I","C","A","J","G","H"],["D-6084","I","H","G","F","J","K","A","B","E","D","C"],["D-6085","F","H","B","C","K","I","G","E","A","J","D"],["D-6086","C","A","H","J","I","G","D","B","K","E","F"],["D-6087","J","F","B","H","I","C","K","E","G","A","D"],["D-6088","H","C","I","J","G","E","B","F","D","A","K"],["D-6089","H","C","G","F","I","B","K","E","A","J","D"],["D-6090","K","A","I","G","D","J","C","E","F","H","B"],["D-6091","E","C","B","G","H","D","F","K","A","J","I"],["D-6092","D","A","H","C","E","K","F","B","I","G","J"],["D-6093","A","K","E","H","J","D","I","F","B","C","G"],["D-6094","A","K","G","J","B","C","D","H","F","I","E"],["D-6095","D","J","E","F","G","C","I","K","B","A","H"],["D-6096","D","J","H","G","A","F","C","B","E","K","I"],["D-6097","K","B","A","C","H","D","F","E","J","G","I"],["D-6098","J","G","I","E","A","H","D","F","C","K","B"],["D-6099","F","J","I","A","D","H","K","G","C","E","B"],["D-6100","K","D","E","I","G","A","J","B","F","H","C"],["D-6101","E","A","I","B","J","K","H","D","G","F","C"],["D-6102","F","A","E","B","C","G","D","K","I","H","J"],["D-6103","B","H","K","G","F","C","D","I","A","J","E"],["D-6104","K","I","E","A","F","H","G","B","C","J","D"],["D-6105","J","B","C","K","H","D","I","G","F","E","A"],["D-6106","E","J","D","B","F","A","K","G","I","H","C"],["D-6107","H","D","B","I","C","A","J","F","E","K","G"],["D-6108","F","J","H","K","E","D","G","B","C","I","A"],["D-6109","H","D","G","I","C","K","B","E","J","A","F"],["D-6110","J","K","H","B","D","E","F","C","A","G","I"],["D-6111","H","K","C","B","J","A","F","G","I","D","E"],["D-6112","D","B","H","I","J","E","G","F","A","C","K"],["D-6113","E","H","D","A","K","F","I","B","G","J","C"],["D-6114","C","G","E","A","J","F","D","I","B","K","H"],["D-6115","D","H","F","I","B","A","J","K","C","G","E"],["D-6116","A","K","I","J","F","E","G","D","C","H","B"],["D-6117","B","C","A","E","F","D","K","J","I","G","H"],["D-6118","H","C","J","A","B","F","D","G","K","I","E"],["D-6119","H","F","A","B","G","J","K","E","C","D","I"],["D-6120","E","B","C","H","K","I","A","D","J","G","F"],["D-6121","E","D","K","J","I","C","H","B","A","G","F"],["D-6122","B","E","H","K","J","G","I","D","F","C","A"],["D-6123","J","H","B","E","G","K","I","C","A","D","F"],["D-6124","G","A","E","C","I","H","F","K","D","J","B"],["D-6125","C","H","B","I","F","K","E","J","D","G","A"],["D-6126","I","G","J","C","B","E","A","H","F","D","K"],["D-6127","G","E","K","C","B","H","D","F","A","I","J"],["D-6128","G","J","C","D","B","F","E","H","I","A","K"],["D-6129","H","D","I","A","J","K","B","F","G","E","C"],["D-6130","B","J","I","K","A","E","C","F","H","G","D"],["D-6131","F","G","A","C","D","B","H","E","I","K","J"],["D-6132","H","A","B","K","E","D","I","F","J","C","G"],["D-6133","I","C","J","E","B","F","G","K","A","D","H"],["D-6134","J","I","D","B","F","A","C","K","H","E","G"],["D-6135","B","H","C","A","G","F","E","K","D","I","J"],["D-6136","I","E","G","D","J","H","K","C","F","A","B"],["D-6137","J","G","K","E","F","B","H","I","A","C","D"],["D-6138","D","F","K","J","A","B","E","I","G","H","C"],["D-6139","B","E","I","D","C","A","G","K","H","F","J"],["D-6140","H","K","C","I","B","D","E","G","J","A","F"],["D-6141","I","F","B","C","A","D","G","E","K","H","J"],["D-6142","F","A","I","G","H","D","E","B","J","C","K"],["D-6143","K","I","F","C","A","G","B","H","D","E","J"],["D-6144","C","F","K","I","G","B","A","J","E","H","D"],["D-6145","J","E","G","B","H","F","C","I","K","A","D"],["D-6146","I","B","F","H","E","K","D","G","A","C","J"],["D-6147","K","A","C","H","B","D","I","F","J","G","E"],["D-6148","I","K","E","B","H","G","J","F","A","D","C"],["D-6149","D","C","A","K","H","J","I","B","E","G","F"],["D-6150","B","E","D","K","A","F","I","C","J","H","G"],["D-6151","C","A","D","I","K","G","B","F","E","J","H"],["D-6152","C","J","D","F","G","B","A","K","H","E","I"],["D-6153","I","J","H","A","B","E","G","C","K","F","D"],["D-6154","E","F","A","K","B","J","C","G","D","I","H"],["D-6155","D","G","K","H","J","A","E","B","I","C","F"],["D-6156","E","J","F","B","H","G","I","K","C","D","A"],["D-6157","H","C","K","F","I","J","D","G","E","A","B"],["D-6158","A","I","E","H","G","D","C","K","B","J","F"],["D-6159","E","G","K","B","J","I","C","F","H","D","A"],["D-6160","A","I","E","B","F","G","K","J","C","D","H"],["D-6161","D","K","J","I","E","H","B","A","F","C","G"],["D-6162","E","F","K","H","B","J","D","A","G","C","I"],["D-6163","C","E","G","B","I","D","A","K","H","F","J"],["D-6164","B","A","E","K","J","G","D","C","I","H","F"],["D-6165","D","F","E","A","B","K","G","H","J","C","I"],["D-6166","D","E","G","I","C","K","F","A","H","J","B"],["D-6167","D","J","H","F","B","I","G","E","C","A","K"],["D-6168","K","H","I","A","J","B","C","F","E","G","D"],["D-6169","G","H","D","K","C","F","I","E","A","J","B"],["D-6170","E","H","G","F","C","K","B","D","A","J","I"],["D-6171","I","E","A","F","H","B","J","D","G","K","C"],["D-6172","E","G","D","F","B","A","I","H","C","K","J"],["D-6173","H","I","E","C","K","A","J","D","F","B","G"],["D-6174","C","I","E","A","D","J","K","H","F","G","B"],["D-6175","G","F","A","B","J","D","E","H","K","C","I"],["D-6176","H","J","D","B","A","K","E","F","G","I","C"],["D-6177","E","C","I","A","H","B","G","J","K","F","D"],["D-6178","I","H","C","E","D","K","G","J","B","F","A"],["D-6179","D","I","F","K","A","H","E","C","B","G","J"],["D-6180","F","E","A","I","B","G","K","H","J","D","C"],["D-6181","K","G","F","A","E","B","I","C","J","D","H"],["D-6182","I","A","D","C","E","K","J","F","B","H","G"],["D-6183","F","J","G","A","I","C","K","H","B","E","D"],["D-6184","E","H","A","C","K","J","G","B","D","F","I"],["D-6185","E","D","F","I","C","K","A","J","B","G","H"],["D-6186","B","I","K","C","A","F","J","G","D","H","E"],["D-6187","C","A","B","G","K","D","J","H","I","F","E"],["D-6188","G","F","B","A","E","C","I","K","D","J","H"],["D-6189","J","D","A","H","K","C","F","G","B","E","I"],["D-6190","E","K","G","C","H","J","I","A","D","B","F"],["D-6191","H","A","F","J","E","D","G","B","C","K","I"],["D-6192","A","B","E","F","D","J","K","I","C","G","H"],["D-6193","B","H","E","J","C","K","D","A","F","I","G"],["D-6194","G","F","C","A","B","D","K","I","J","E","H"],["D-6195","F","H","E","J","A","I","K","G","C","D","B"],["D-6196","G","J","B","C","A","E","H","I","F","K","D"],["D-6197","D","K","G","A","F","C","I","E","B","H","J"],["D-6198","F","K","B","H","J","C","D","I","G","A","E"],["D-6199","F","D","G","C","E","A","H","I","J","B","K"],["D-6200","B","J","D","E","A","K","F","I","C","G","H"],["D-6201","A","D","F","E","I","H","B","G","J","C","K"],["D-6202","E","I","A","J","C","K","D","F","B","H","G"],["D-6203","A","J","B","K","D","I","H","F","C","G","E"],["D-6204","B","J","I","K","A","E","G","F","D","C","H"],["D-6205","D","I","K","G","A","H","E","B","C","F","J"],["D-6206","D","C","A","B","I","E","K","J","H","G","F"],["D-6207","H","D","G","E","A","C","B","I","K","F","J"],["D-6208","K","B","F","E","C","J","H","D","I","A","G"],["D-6209","E","D","B","K","I","G","C","H","F","A","J"],["D-6210","D","B","K","A","I","C","F","J","G","H","E"],["D-6211","G","F","D","C","E","J","A","I","H","B","K"],["D-6212","J","K","C","A","D","B","E","I","H","G","F"],["D-6213","D","B","K","I","C","G","J","A","E","F","H"],["D-6214","E","J","I","C","F","K","H","G","B","D","A"],["D-6215","H","E","G","A","F","D","J","K","I","C","B"],["D-6216","D","C","I","G","B","E","K","A","H","J","F"],["D-6217","H","I","C","D","A","G","K","B","F","J","E"],["D-6218","C","D","F","K","A","I","H","J","E","B","G"],["D-6219","C","J","I","K","D","F","A","E","B","H","G"],["D-6220","E","K","B","F","G","J","I","C","D","H","A"],["D-6221","B","J","A","F","H","C","E","K","I","D","G"],["D-6222","H","G","A","F","E","B","I","J","C","D","K"],["D-6223","D","K","B","J","G","A","F","H","E","C","I"],["D-6224","F","C","K","J","I","B","H","G","A","D","E"],["D-6225","I","J","B","F","G","D","H","E","C","A","K"],["D-6226","D","A","E","I","K","G","J","C","F","H","B"],["D-6227","F","A","C","E","B","J","H","G","K","D","I"],["D-6228","B","G","J","H","C","F","E","K","D","I","A"],["D-6229","G","K","C","D","I","J","B","H","A","E","F"],["D-6230","G","E","K","F","H","I","A","J","B","C","D"],["D-6231","H","I","J","F","A","D","E","C","G","B","K"],["D-6232","C","K","A","E","I","D","F","H","B","G","J"],["D-6233","A","E","G","B","D","I","F","J","K","H","C"],["D-6234","D","C","I","F","A","H","J","B","K","G","E"],["D-6235","H","D","F","K","E","C","I","J","B","G","A"],["D-6236","F","E","J","H","C","I","K","B","G","A","D"],["D-6237","J","G","H","B","F","C","K","D","E","A","I"],["D-6238","D","K","H","F","A","B","J","G","I","E","C"],["D-6239","F","A","I","H","J","E","C","K","B","G","D"],["D-6240","B","D","C","G","K","F","H","J","E","A","I"],["D-6241","J","G","D","H","F","B","K","I","A","E","C"],["D-6242","J","B","C","D","I","A","F","G","K","E","H"],["D-6243","C","H","E","F","D","A","G","K","J","B","I"],["D-6244","D","K","G","I","H","A","J","F","C","E","B"],["D-6245","A","I","E","K","J","G","H","F","D","C","B"],["D-6246","J","B","I","C","E","D","A","K","F","G","H"],["D-6247","J","K","F","A","I","H","D","E","B","G","C"],["D-6248","H","D","J","F","B","G","E","I","C","K","A"],["D-6249","I","D","B","F","J","C","K","A","G","E","H"],["D-6250","E","I","D","J","C","F","G","B","K","A","H"]]},
+"scc_mnb_17":{label:"SCC Men/Non-Binary — 17 candidates",electionName:"SCC Men/Non-Binary",seats:4,candidates:{"A":"Adams","B":"Brooks","C":"Clark","D":"Dunn","E":"Ellis","F":"Franklin","G":"Grant","H":"Hayes","I":"Ingram","J":"Jensen","K":"Kumar","L":"Liu","M":"Morgan","N":"Nash","O":"Ortiz","P":"Patel","Q":"Reed"},ballots:[["D-6001","I","M","D","P","O","E","B","C","L","H","N","J","F","K","A","G","Q"],["D-6002","E","L","N","A","C","G","M","F","J","I","O","D","Q","P","H","K","B"],["D-6003","G","N","C","L","D","M","I","P","Q","A","E","J","H","B","K","O","F"],["D-6004","O","L","H","G","N","M","Q","D","C","E","P","A","J","F","K","I","B"],["D-6005","C","G","J","P","I","N","Q","A","E","O","H","B","L","K","M","F","D"],["D-6006","C","N","E","M","L","B","P","I","Q","J","A","H","G","F","D","K","O"],["D-6007","C","H","B","G","K","Q","N","D","P","M","E","L","O","I","A","F","J"],["D-6008","A","G","O","C","N","H","J","P","K","D","L","B","Q","F","E","I","M"],["D-6009","C","L","K","N","A","D","I","Q","O","J","P","B","H","E","G","F","M"],["D-6010","D","H","Q","J","F","L","O","N","K","C","P","M","I","G","A","B","E"],["D-6011","H","A","K","E","C","G","J","P","I","B","N","F","O","L","Q","M","D"],["D-6012","Q","P","H","D","N","A","C","M","O","E","F","B","G","J","I","K","L"],["D-6013","Q","K","E","D","A","H","F","B","J","N","O","G","I","C","L","P","M"],["D-6014","E","Q","H","B","M","N","O","P","J","D","K","A","I","G","F","C","L"],["D-6015","P","O","B","C","N","Q","G","H","M","K","J","I","F","L","E","A","D"],["D-6016","H","E","C","G","I","J","M","F","D","K","B","N","P","A","O","Q","L"],["D-6017","Q","G","N","H","E","D","K","J","B","M","F","L","C","P","O","A","I"],["D-6018","M","I","Q","G","O","C","B","K","J","P","H","D","A","L","F","N","E"],["D-6019","J","Q","H","B","E","I","L","D","G","M","P","C","F","A","K","N","O"],["D-6020","A","O","E","I","N","P","D","J","G","C","K","B","H","Q","M","F","L"],["D-6021","C","J","Q","O","F","M","A","L","K","P","N","I","D","H","E","B","G"],["D-6022","E","A","Q","P","J","N","F","I","M","H","D","C","L","K","O","B","G"],["D-6023","G","Q","I","B","O","D","J","H","L","F","N","M","C","P","A","K","E"],["D-6024","F","D","P","G","C","N","H","K","I","A","L","Q","M","J","E","B","O"],["D-6025","D","I","J","L","A","M","E","P","H","C","F","O","B","Q","K","N","G"],["D-6026","K","B","A","L","C","J","D","O","H","E","Q","P","N","F","M","G","I"],["D-6027","G","P","Q","K","I","F","H","M","J","E","L","B","A","D","N","C","O"],["D-6028","G","K","D","J","E","P","I","F","L","O","N","A","C","Q","M","B","H"],["D-6029","E","L","M","Q","C","B","A","D","F","N","O","J","H","I","P","K","G"],["D-6030","D","G","H","F","Q","J","C","L","E","I","B","K","A","M","P","O","N"],["D-6031","F","D","M","O","L","A","C","E","J","P","B","H","I","K","G","N","Q"],["D-6032","C","K","J","P","D","H","L","E","A","N","I","F","M","B","O","Q","G"],["D-6033","F","O","J","I","L","C","K","G","H","P","D","B","E","A","Q","N","M"],["D-6034","I","C","F","E","B","D","M","Q","L","A","J","N","O","K","G","P","H"],["D-6035","M","C","L","G","B","E","K","N","H","F","O","I","Q","J","A","D","P"],["D-6036","K","O","E","M","G","Q","P","B","L","J","C","H","F","D","A","N","I"],["D-6037","B","O","D","Q","H","L","F","M","J","G","A","C","E","K","N","P","I"],["D-6038","E","J","B","L","Q","F","P","D","G","M","H","C","N","A","I","K","O"],["D-6039","O","C","P","K","N","J","E","A","H","D","G","L","F","Q","I","B","M"],["D-6040","F","G","I","N","A","D","H","L","E","K","P","O","J","Q","M","C","B"],["D-6041","A","Q","K","E","P","O","M","N","J","G","H","B","I","F","C","D","L"],["D-6042","L","O","A","M","Q","P","C","F","B","E","N","G","J","I","K","D","H"],["D-6043","O","M","J","K","F","L","G","A","I","C","E","D","H","Q","P","B","N"],["D-6044","C","I","E","M","N","K","L","Q","G","J","O","F","B","D","H","P","A"],["D-6045","G","A","J","F","M","H","E","B","N","D","Q","K","P","I","L","O","C"],["D-6046","C","M","B","N","H","A","D","G","O","Q","E","K","F","I","P","J","L"],["D-6047","I","C","J","P","O","A","B","M","D","G","L","E","H","Q","K","N","F"],["D-6048","A","O","J","Q","M","N","D","P","K","F","C","E","L","B","G","I","H"],["D-6049","H","F","K","A","O","M","Q","E","C","G","L","P","N","B","D","J","I"],["D-6050","Q","B","L","N","D","M","K","A","H","P","E","F","O","I","J","C","G"],["D-6051","M","P","L","O","A","C","E","J","I","K","G","H","F","B","N","D","Q"],["D-6052","C","O","E","F","A","L","P","H","B","I","M","D","G","Q","J","N","K"],["D-6053","O","G","A","L","I","D","B","F","C","M","Q","H","J","P","K","E","N"],["D-6054","H","F","B","A","N","M","I","J","D","C","K","L","P","O","Q","E","G"],["D-6055","B","G","O","M","I","P","F","Q","C","N","L","E","H","J","K","D","A"],["D-6056","A","E","K","O","D","B","J","G","F","Q","L","M","P","C","I","H","N"],["D-6057","H","M","Q","F","P","O","D","J","N","B","E","K","C","A","L","I","G"],["D-6058","B","L","K","E","D","A","Q","H","G","P","N","O","J","I","M","F","C"],["D-6059","A","O","I","B","C","L","K","F","Q","M","H","G","E","J","D","N","P"],["D-6060","D","C","I","G","M","A","J","F","B","N","L","Q","P","H","O","K","E"],["D-6061","A","N","O","P","B","J","G","I","F","E","K","M","Q","C","D","H","L"],["D-6062","P","K","J","F","Q","D","M","G","E","H","I","L","C","B","O","N","A"],["D-6063","N","P","I","L","Q","O","J","D","A","B","C","E","G","H","M","F","K"],["D-6064","J","P","C","Q","H","K","G","D","F","N","O","E","B","I","L","A","M"],["D-6065","L","J","A","D","I","E","F","M","O","K","B","C","N","G","Q","H","P"],["D-6066","L","A","F","O","C","H","Q","N","D","J","I","P","G","K","E","M","B"],["D-6067","F","D","H","M","O","J","P","Q","C","B","E","N","G","L","K","I","A"],["D-6068","G","I","P","H","Q","M","A","N","O","B","L","D","F","J","K","C","E"],["D-6069","H","I","G","B","J","C","K","D","N","O","A","F","E","P","Q","M","L"],["D-6070","H","I","D","G","C","E","O","P","B","N","Q","J","L","K","M","A","F"],["D-6071","G","H","F","O","Q","B","I","L","N","M","P","C","D","J","E","K","A"],["D-6072","N","O","H","C","B","F","G","D","L","Q","A","I","M","J","K","E","P"],["D-6073","L","A","M","E","N","H","C","Q","F","I","P","K","B","J","O","D","G"],["D-6074","N","Q","B","F","D","H","A","M","K","E","P","C","J","G","L","O","I"],["D-6075","O","L","F","H","Q","G","E","M","N","C","K","I","B","D","J","P","A"],["D-6076","D","C","G","P","J","A","F","K","H","B","N","O","M","I","E","Q","L"],["D-6077","G","C","L","K","F","I","J","H","O","A","N","Q","E","M","B","D","P"],["D-6078","K","D","I","N","L","O","F","C","H","B","J","Q","G","E","A","P","M"],["D-6079","E","I","M","B","P","O","N","G","D","C","L","J","A","Q","K","H","F"],["D-6080","J","N","F","B","K","M","Q","L","I","A","E","C","O","H","P","G","D"],["D-6081","H","I","C","G","M","J","E","B","D","P","Q","O","F","A","K","L","N"],["D-6082","D","K","M","N","J","G","A","C","P","L","Q","F","O","I","E","B","H"],["D-6083","F","P","L","K","O","D","H","N","I","A","M","E","G","B","J","C","Q"],["D-6084","P","L","D","A","B","O","N","H","E","F","I","J","M","Q","C","K","G"],["D-6085","F","C","P","H","K","I","D","Q","L","O","B","N","A","M","E","G","J"],["D-6086","D","L","F","K","M","B","E","G","O","N","P","H","Q","J","I","C","A"],["D-6087","Q","C","E","D","F","N","G","A","P","J","I","H","B","M","K","L","O"],["D-6088","D","E","B","A","K","O","Q","C","M","N","I","L","F","G","J","P","H"],["D-6089","E","M","N","G","B","F","L","I","D","C","H","A","P","Q","J","K","O"],["D-6090","M","H","A","I","P","Q","E","C","F","D","O","L","J","G","K","B","N"],["D-6091","F","K","I","Q","A","J","B","C","M","N","D","H","L","G","P","O","E"],["D-6092","G","F","D","C","J","E","H","L","I","M","A","P","B","N","Q","K","O"],["D-6093","G","P","M","I","O","L","E","K","N","D","B","F","C","H","J","A","Q"],["D-6094","L","M","I","J","K","D","A","P","G","O","F","N","H","Q","B","E","C"],["D-6095","P","L","C","A","B","O","J","F","G","N","H","M","I","E","K","D","Q"],["D-6096","Q","A","L","F","G","J","P","B","O","D","K","N","C","M","H","E","I"],["D-6097","I","G","H","K","L","D","O","N","P","A","C","F","M","E","J","B","Q"],["D-6098","M","D","B","N","H","Q","P","A","C","I","K","E","J","F","G","O","L"],["D-6099","J","D","Q","N","E","M","A","F","P","B","O","K","H","L","G","I","C"],["D-6100","M","J","E","I","D","F","B","K","A","Q","C","G","P","H","L","N","O"],["D-6101","G","K","D","O","Q","M","F","A","J","B","N","E","C","H","I","P","L"],["D-6102","P","H","N","E","F","L","A","O","B","G","I","M","D","K","Q","C","J"],["D-6103","Q","G","I","M","A","J","B","P","N","L","K","D","O","C","H","F","E"],["D-6104","M","O","B","N","G","L","K","A","H","I","Q","P","F","C","J","D","E"],["D-6105","I","P","B","J","K","H","C","F","M","E","Q","N","G","A","L","O","D"],["D-6106","F","Q","J","B","K","D","L","G","E","O","N","P","I","H","A","C","M"],["D-6107","D","I","P","E","L","J","K","G","O","C","Q","M","B","N","F","A","H"],["D-6108","L","H","E","M","C","A","Q","D","K","O","F","P","G","N","B","I","J"],["D-6109","K","F","B","H","N","D","Q","P","E","C","A","I","J","O","L","G","M"],["D-6110","C","L","Q","B","I","F","H","A","K","P","J","D","E","G","O","N","M"],["D-6111","O","K","I","M","C","G","L","D","J","H","E","Q","N","P","F","A","B"],["D-6112","L","F","D","H","N","J","O","K","G","A","M","C","I","P","Q","B","E"],["D-6113","I","E","H","B","K","Q","J","A","G","D","M","N","L","C","F","P","O"],["D-6114","O","D","L","H","Q","M","B","A","F","C","J","N","G","P","I","E","K"],["D-6115","Q","L","M","K","N","C","F","B","J","I","P","G","H","E","A","D","O"],["D-6116","G","Q","L","M","P","D","F","N","J","I","A","E","H","K","C","O","B"],["D-6117","O","Q","N","F","M","J","A","B","H","L","K","G","D","I","E","C","P"],["D-6118","O","K","D","P","F","J","C","N","I","H","M","G","Q","L","A","E","B"],["D-6119","A","N","Q","I","B","L","F","J","H","D","K","E","C","O","M","G","P"],["D-6120","O","E","L","I","K","J","N","A","M","F","D","B","Q","P","C","G","H"],["D-6121","K","E","C","Q","D","M","G","A","B","J","N","L","I","F","P","O","H"],["D-6122","E","C","M","O","F","D","A","H","L","J","P","K","B","I","G","Q","N"],["D-6123","O","N","D","E","G","M","A","I","B","P","H","Q","F","K","J","L","C"],["D-6124","E","H","O","L","J","G","I","D","Q","P","F","K","N","C","B","M","A"],["D-6125","H","Q","E","B","J","M","N","K","O","L","G","A","F","I","P","C","D"],["D-6126","K","F","N","Q","O","D","L","M","E","J","P","B","I","H","A","G","C"],["D-6127","B","L","F","J","D","O","H","P","Q","G","M","C","N","A","K","I","E"],["D-6128","E","P","D","M","G","A","B","N","F","K","J","L","Q","O","H","I","C"],["D-6129","D","F","A","B","L","E","O","M","J","N","H","I","C","K","P","G","Q"],["D-6130","P","C","B","D","A","Q","O","I","J","N","H","F","E","L","K","M","G"],["D-6131","J","O","P","F","L","E","M","I","N","K","B","G","C","A","Q","H","D"],["D-6132","Q","A","C","K","M","D","J","N","B","H","L","P","F","I","E","G","O"],["D-6133","N","E","H","M","C","F","B","O","I","L","J","P","Q","G","D","A","K"],["D-6134","E","Q","O","P","L","D","A","K","C","J","H","I","N","M","G","B","F"],["D-6135","D","B","J","I","P","C","F","K","L","M","Q","G","N","E","O","H","A"],["D-6136","H","L","J","F","K","E","M","G","C","B","N","I","O","Q","P","D","A"],["D-6137","O","N","P","I","G","E","B","Q","A","H","F","M","D","J","C","L","K"],["D-6138","H","P","M","F","O","J","Q","E","I","K","B","C","N","D","A","G","L"],["D-6139","D","E","L","F","J","C","K","A","P","Q","I","O","H","N","G","B","M"],["D-6140","A","I","D","P","G","M","H","F","E","B","K","O","C","Q","L","N","J"],["D-6141","L","K","O","H","F","J","A","M","N","C","E","D","B","G","Q","P","I"],["D-6142","L","F","Q","H","B","I","O","N","P","E","D","G","C","J","A","K","M"],["D-6143","C","I","J","D","K","B","F","P","M","O","E","L","H","A","N","Q","G"],["D-6144","F","O","J","D","K","B","P","G","Q","M","C","E","A","N","I","H","L"],["D-6145","C","M","O","D","F","I","L","K","B","N","A","G","E","Q","J","H","P"],["D-6146","E","J","N","A","O","P","B","I","L","K","C","D","H","Q","M","F","G"],["D-6147","L","J","P","D","Q","B","I","K","O","F","A","C","G","N","M","E","H"],["D-6148","Q","C","P","M","K","J","L","G","E","B","F","H","N","D","I","O","A"],["D-6149","A","O","K","B","I","L","N","G","J","H","E","P","M","C","F","D","Q"],["D-6150","D","O","N","P","H","Q","M","I","C","L","G","F","B","E","K","J","A"],["D-6151","G","F","Q","N","A","K","O","D","J","M","C","L","E","I","B","P","H"],["D-6152","H","Q","K","F","D","G","I","J","C","P","B","M","O","L","A","N","E"],["D-6153","D","A","I","H","J","P","E","G","F","B","O","Q","L","N","K","C","M"],["D-6154","A","D","O","E","B","J","Q","H","K","C","N","M","P","I","L","F","G"],["D-6155","A","F","K","G","D","C","M","Q","H","P","J","L","B","O","N","E","I"],["D-6156","F","G","B","N","H","P","D","O","M","J","Q","A","L","K","C","I","E"],["D-6157","J","G","L","I","Q","K","E","C","H","D","P","M","O","F","B","N","A"],["D-6158","L","E","C","K","D","O","B","M","I","P","F","Q","A","J","N","G","H"],["D-6159","M","P","H","N","F","Q","C","J","E","L","G","I","B","O","A","K","D"],["D-6160","B","E","D","I","H","F","J","N","L","M","K","Q","O","C","P","A","G"],["D-6161","Q","A","O","B","M","J","H","G","N","C","E","L","F","P","I","D","K"],["D-6162","C","K","Q","M","G","L","B","I","A","O","F","N","J","H","D","E","P"],["D-6163","G","J","I","B","F","P","M","O","D","L","K","E","Q","C","N","H","A"],["D-6164","M","K","L","H","O","P","J","N","B","C","D","Q","I","G","A","E","F"],["D-6165","L","H","C","N","D","E","B","J","G","A","I","K","Q","F","M","O","P"],["D-6166","E","J","B","I","G","L","K","C","M","D","O","A","P","F","Q","H","N"],["D-6167","B","G","F","M","N","L","E","I","C","A","Q","D","K","P","J","O","H"],["D-6168","K","G","M","P","F","N","C","J","E","I","B","D","Q","O","A","L","H"],["D-6169","F","K","E","O","C","D","A","N","L","B","M","H","Q","J","G","I","P"],["D-6170","L","I","F","J","D","C","G","A","P","Q","N","K","O","M","H","B","E"],["D-6171","O","M","D","K","J","H","I","F","B","E","Q","P","A","L","N","G","C"],["D-6172","I","B","D","N","F","Q","G","K","O","P","A","C","E","J","H","L","M"],["D-6173","N","B","J","G","I","D","K","E","L","P","Q","C","A","M","F","O","H"],["D-6174","D","H","M","A","B","I","K","J","F","P","G","E","C","N","L","O","Q"],["D-6175","K","O","L","C","M","N","F","H","Q","A","D","G","B","E","J","I","P"],["D-6176","P","E","M","F","J","D","K","G","O","C","B","H","A","L","Q","N","I"],["D-6177","D","F","G","Q","E","O","A","C","I","K","P","H","J","N","B","M","L"],["D-6178","G","J","C","A","Q","N","P","L","B","I","H","F","D","M","K","O","E"],["D-6179","K","M","H","G","B","C","N","L","I","Q","P","F","J","E","A","O","D"],["D-6180","E","G","F","L","J","C","I","Q","B","K","P","D","O","M","H","N","A"],["D-6181","C","L","O","D","N","K","G","F","B","P","Q","E","H","A","M","I","J"],["D-6182","C","I","L","G","A","M","D","F","E","H","B","O","Q","J","N","K","P"],["D-6183","H","F","N","P","L","I","K","Q","O","E","G","A","M","D","B","C","J"],["D-6184","E","Q","N","G","K","P","C","O","F","H","B","M","I","L","D","J","A"],["D-6185","H","N","Q","M","O","F","A","B","C","G","I","P","E","L","D","J","K"],["D-6186","F","Q","A","G","M","J","L","N","O","I","B","H","K","P","D","E","C"],["D-6187","D","J","E","F","L","N","H","M","O","B","C","P","A","I","G","Q","K"],["D-6188","N","M","L","J","A","I","O","F","E","C","K","Q","G","D","P","H","B"],["D-6189","N","F","H","J","B","K","L","M","I","A","Q","D","E","C","P","O","G"],["D-6190","P","I","D","F","Q","O","H","B","C","K","A","L","E","G","M","N","J"],["D-6191","F","D","B","J","C","A","L","P","O","Q","M","I","G","K","H","E","N"],["D-6192","H","A","K","P","E","O","L","I","B","G","J","C","Q","F","D","N","M"],["D-6193","H","A","K","Q","C","P","L","B","I","J","M","N","O","F","E","G","D"],["D-6194","M","C","O","G","A","K","F","H","P","Q","N","L","D","B","E","I","J"],["D-6195","B","M","K","J","C","G","H","D","L","F","Q","A","P","E","I","O","N"],["D-6196","P","G","J","H","E","Q","D","F","A","K","N","L","B","C","M","O","I"],["D-6197","K","A","C","P","N","M","Q","J","D","H","L","O","I","G","F","E","B"],["D-6198","G","K","H","Q","N","L","P","O","C","A","B","D","E","I","F","M","J"],["D-6199","A","G","H","F","O","P","Q","E","I","L","N","J","K","M","C","B","D"],["D-6200","Q","C","B","K","J","F","P","M","G","D","N","I","E","L","A","O","H"],["D-6201","M","F","C","I","D","G","Q","J","H","E","P","L","K","N","B","O","A"],["D-6202","A","Q","M","P","G","N","L","H","D","C","K","J","B","E","O","F","I"],["D-6203","Q","D","A","K","C","P","M","J","H","B","I","O","G","F","L","E","N"],["D-6204","F","D","C","O","M","J","H","L","E","P","K","G","N","B","A","Q","I"],["D-6205","G","P","B","M","A","L","K","Q","O","E","N","J","H","I","F","D","C"],["D-6206","O","I","K","Q","N","G","L","J","C","B","H","D","M","F","P","E","A"],["D-6207","D","I","H","Q","A","N","J","P","C","B","E","F","O","K","L","G","M"],["D-6208","L","Q","O","N","F","H","I","C","D","M","K","E","A","B","P","G","J"],["D-6209","L","J","I","E","Q","C","F","K","B","M","A","O","H","D","P","N","G"],["D-6210","E","C","F","P","O","L","N","Q","J","A","D","B","M","H","K","I","G"],["D-6211","B","O","D","F","Q","I","K","E","J","N","G","A","P","L","C","M","H"],["D-6212","A","Q","K","P","N","H","C","F","E","L","G","I","M","B","O","D","J"],["D-6213","C","H","F","K","P","Q","L","A","D","B","N","J","E","G","M","I","O"],["D-6214","G","D","Q","C","F","N","O","B","K","M","H","E","I","J","L","A","P"],["D-6215","A","L","E","D","C","O","N","F","I","Q","G","B","M","H","J","P","K"],["D-6216","G","I","A","M","H","P","B","D","O","J","Q","N","K","L","E","C","F"],["D-6217","O","G","E","P","J","D","C","M","H","L","B","N","K","I","F","A","Q"],["D-6218","N","M","P","F","K","J","L","A","G","D","H","E","C","Q","I","B","O"],["D-6219","M","J","N","D","B","A","K","P","F","G","O","I","H","Q","C","E","L"],["D-6220","K","D","F","E","L","J","G","A","M","I","Q","P","C","N","O","B","H"],["D-6221","J","N","F","D","K","P","Q","E","L","I","M","A","C","H","O","G","B"],["D-6222","N","E","Q","B","C","K","J","M","L","A","F","H","P","O","D","I","G"],["D-6223","F","B","G","P","J","H","N","C","D","I","E","O","A","Q","K","M","L"],["D-6224","C","H","L","E","I","N","B","F","J","P","D","G","M","K","O","Q","A"],["D-6225","N","B","G","Q","J","P","O","C","K","D","I","M","H","L","F","E","A"],["D-6226","K","L","A","D","J","H","N","B","Q","O","G","E","C","I","P","M","F"],["D-6227","H","B","L","E","K","P","O","I","D","F","G","M","Q","J","N","A","C"],["D-6228","I","G","J","C","M","Q","A","N","K","H","O","P","E","B","F","D","L"],["D-6229","D","F","G","H","J","O","N","B","I","L","C","P","Q","E","M","A","K"],["D-6230","F","H","A","C","N","I","J","G","E","O","M","Q","B","D","K","L","P"],["D-6231","C","J","N","E","G","P","B","M","F","O","H","L","A","I","Q","D","K"],["D-6232","L","B","K","H","I","A","D","Q","J","N","M","P","G","F","C","O","E"],["D-6233","L","J","I","E","K","D","F","P","H","A","M","O","Q","N","G","C","B"],["D-6234","C","O","P","Q","M","J","I","D","F","N","K","A","L","H","G","B","E"],["D-6235","H","C","F","E","G","B","A","I","K","M","Q","O","L","J","N","P","D"],["D-6236","D","H","F","J","I","O","B","Q","N","P","E","M","A","K","G","C","L"],["D-6237","K","F","A","G","L","M","I","P","H","C","D","O","E","J","N","Q","B"],["D-6238","B","A","M","D","L","I","H","Q","E","F","O","P","C","G","K","J","N"],["D-6239","A","N","K","L","C","F","H","Q","I","B","P","D","J","M","G","O","E"],["D-6240","L","D","M","O","H","N","E","I","G","J","A","C","B","Q","K","P","F"],["D-6241","I","L","C","D","E","H","O","K","A","N","J","P","F","B","G","Q","M"],["D-6242","L","I","K","G","J","F","D","Q","C","B","N","H","P","E","O","M","A"],["D-6243","H","K","O","F","A","M","P","E","G","C","B","I","J","D","N","Q","L"],["D-6244","B","M","Q","E","F","N","K","O","I","G","C","D","A","J","H","L","P"],["D-6245","A","D","G","P","N","C","Q","H","O","I","B","E","F","M","J","K","L"],["D-6246","E","Q","I","G","B","J","F","L","D","N","C","P","O","A","K","M","H"],["D-6247","Q","G","N","O","J","B","L","F","H","M","E","P","C","D","I","K","A"],["D-6248","D","N","K","J","C","B","O","G","Q","E","I","M","L","P","H","A","F"],["D-6249","H","P","K","F","D","N","Q","G","I","L","A","C","J","O","E","M","B"],["D-6250","H","P","N","E","F","C","I","L","B","O","D","A","J","G","Q","K","M"]]},
+"dei_4":{label:"DEI Committee Chair — 4 candidates",electionName:"DEI Committee Chair",seats:1,candidates:{"A":"Alvarez","B":"Blackwell","C":"Cortez","D":"Dawson"},ballots:[["D-6001","C","A","D","B"],["D-6002","B","C","A","D"],["D-6003","A","D","B","C"],["D-6004","A","D","B","C"],["D-6005","B","D","C","A"],["D-6006","B","A","D","C"],["D-6007","A","C","B","D"],["D-6008","A","B","C","D"],["D-6009","A","C","B","D"],["D-6010","B","D","A","C"],["D-6011","A","B","D","C"],["D-6012","B","A","D","C"],["D-6013","D","B","A","C"],["D-6014","B","A","D","C"],["D-6015","A","B","C","D"],["D-6016","A","B","D","C"],["D-6017","C","B","D","A"],["D-6018","A","D","C","B"],["D-6019","C","A","D","B"],["D-6020","A","D","B","C"],["D-6021","A","C","D","B"],["D-6022","B","A","D","C"],["D-6023","D","B","A","C"],["D-6024","B","C","A","D"],["D-6025","A","C","B","D"],["D-6026","A","D","C","B"],["D-6027","C","A","D","B"],["D-6028","C","B","A","D"],["D-6029","D","C","B","A"],["D-6030","A","C","B","D"],["D-6031","C","B","D","A"],["D-6032","B","A","D","C"],["D-6033","B","A","D","C"],["D-6034","C","A","B","D"],["D-6035","C","A","B","D"],["D-6036","B","D","C","A"],["D-6037","C","D","B","A"],["D-6038","B","D","A","C"],["D-6039","D","C","A","B"],["D-6040","D","B","C","A"],["D-6041","A","D","C","B"],["D-6042","D","A","C","B"],["D-6043","A","C","D","B"],["D-6044","D","C","A","B"],["D-6045","B","D","A","C"],["D-6046","A","C","B","D"],["D-6047","A","C","B","D"],["D-6048","D","A","B","C"],["D-6049","C","B","D","A"],["D-6050","D","A","C","B"],["D-6051","C","D","B","A"],["D-6052","C","D","B","A"],["D-6053","D","A","B","C"],["D-6054","A","B","C","D"],["D-6055","D","B","C","A"],["D-6056","A","C","D","B"],["D-6057","D","B","A","C"],["D-6058","C","A","D","B"],["D-6059","A","C","D","B"],["D-6060","A","D","C","B"],["D-6061","A","B","D","C"],["D-6062","A","B","C","D"],["D-6063","C","B","A","D"],["D-6064","A","C","D","B"],["D-6065","B","A","C","D"],["D-6066","C","B","D","A"],["D-6067","B","C","A","D"],["D-6068","D","A","B","C"],["D-6069","A","B","C","D"],["D-6070","A","D","B","C"],["D-6071","C","D","B","A"],["D-6072","C","A","B","D"],["D-6073","B","A","C","D"],["D-6074","A","B","C","D"],["D-6075","B","A","D","C"],["D-6076","C","B","D","A"],["D-6077","D","A","C","B"],["D-6078","D","C","A","B"],["D-6079","A","D","B","C"],["D-6080","A","D","B","C"],["D-6081","D","B","C","A"],["D-6082","A","B","C","D"],["D-6083","D","A","B","C"],["D-6084","B","D","C","A"],["D-6085","B","D","C","A"],["D-6086","B","A","D","C"],["D-6087","A","C","B","D"],["D-6088","A","B","D","C"],["D-6089","C","A","B","D"],["D-6090","C","B","A","D"],["D-6091","A","C","B","D"],["D-6092","A","C","D","B"],["D-6093","D","C","A","B"],["D-6094","D","A","B","C"],["D-6095","D","A","B","C"],["D-6096","B","D","A","C"],["D-6097","B","C","A","D"],["D-6098","B","C","A","D"],["D-6099","A","C","D","B"],["D-6100","D","C","B","A"],["D-6101","B","C","A","D"],["D-6102","D","A","B","C"],["D-6103","D","B","C","A"],["D-6104","B","D","A","C"],["D-6105","C","B","A","D"],["D-6106","A","C","B","D"],["D-6107","B","C","D","A"],["D-6108","A","D","B","C"],["D-6109","D","B","C","A"],["D-6110","A","C","B","D"],["D-6111","C","D","A","B"],["D-6112","B","C","D","A"],["D-6113","C","B","A","D"],["D-6114","C","D","B","A"],["D-6115","C","D","A","B"],["D-6116","B","D","A","C"],["D-6117","B","A","D","C"],["D-6118","C","A","B","D"],["D-6119","B","C","D","A"],["D-6120","A","B","D","C"],["D-6121","B","D","A","C"],["D-6122","C","A","D","B"],["D-6123","D","B","A","C"],["D-6124","D","B","A","C"],["D-6125","C","B","D","A"],["D-6126","B","D","C","A"],["D-6127","A","B","D","C"],["D-6128","B","C","D","A"],["D-6129","B","D","C","A"],["D-6130","C","A","D","B"],["D-6131","B","A","D","C"],["D-6132","B","D","C","A"],["D-6133","B","A","D","C"],["D-6134","B","D","A","C"],["D-6135","A","D","C","B"],["D-6136","C","B","A","D"],["D-6137","C","A","B","D"],["D-6138","C","B","D","A"],["D-6139","C","B","A","D"],["D-6140","C","D","B","A"],["D-6141","A","C","D","B"],["D-6142","C","B","A","D"],["D-6143","C","A","B","D"],["D-6144","C","D","B","A"],["D-6145","D","C","A","B"],["D-6146","C","B","A","D"],["D-6147","B","D","A","C"],["D-6148","C","D","A","B"],["D-6149","A","D","C","B"],["D-6150","B","A","C","D"],["D-6151","C","A","B","D"],["D-6152","C","D","B","A"],["D-6153","C","D","B","A"],["D-6154","D","C","A","B"],["D-6155","C","B","D","A"],["D-6156","C","D","A","B"],["D-6157","C","A","D","B"],["D-6158","D","A","C","B"],["D-6159","C","B","D","A"],["D-6160","D","C","B","A"],["D-6161","A","D","B","C"],["D-6162","D","C","B","A"],["D-6163","B","C","D","A"],["D-6164","B","C","A","D"],["D-6165","D","A","B","C"],["D-6166","B","D","C","A"],["D-6167","B","A","D","C"],["D-6168","B","A","D","C"],["D-6169","C","D","A","B"],["D-6170","C","D","A","B"],["D-6171","C","B","A","D"],["D-6172","C","A","D","B"],["D-6173","D","C","A","B"],["D-6174","C","B","A","D"],["D-6175","B","A","D","C"],["D-6176","D","C","A","B"],["D-6177","C","D","B","A"],["D-6178","C","D","B","A"],["D-6179","C","B","D","A"],["D-6180","A","C","D","B"],["D-6181","C","A","B","D"],["D-6182","B","A","D","C"],["D-6183","B","A","D","C"],["D-6184","A","C","D","B"],["D-6185","A","B","C","D"],["D-6186","D","B","A","C"],["D-6187","C","A","B","D"],["D-6188","D","A","B","C"],["D-6189","C","B","A","D"],["D-6190","A","D","C","B"],["D-6191","B","C","A","D"],["D-6192","C","D","B","A"],["D-6193","D","A","B","C"],["D-6194","C","B","D","A"],["D-6195","A","C","B","D"],["D-6196","C","D","A","B"],["D-6197","A","D","B","C"],["D-6198","C","B","A","D"],["D-6199","C","B","D","A"],["D-6200","D","C","A","B"],["D-6201","B","C","A","D"],["D-6202","C","B","D","A"],["D-6203","D","B","C","A"],["D-6204","C","B","A","D"],["D-6205","A","C","B","D"],["D-6206","D","A","B","C"],["D-6207","B","D","C","A"],["D-6208","D","B","A","C"],["D-6209","C","D","A","B"],["D-6210","A","B","D","C"],["D-6211","D","C","A","B"],["D-6212","B","A","C","D"],["D-6213","A","D","C","B"],["D-6214","A","C","D","B"],["D-6215","A","B","C","D"],["D-6216","C","D","A","B"],["D-6217","B","C","D","A"],["D-6218","C","A","B","D"],["D-6219","A","B","C","D"],["D-6220","B","C","D","A"],["D-6221","C","A","D","B"],["D-6222","B","A","D","C"],["D-6223","B","D","A","C"],["D-6224","D","C","A","B"],["D-6225","A","C","D","B"],["D-6226","A","D","B","C"],["D-6227","C","D","A","B"],["D-6228","A","B","D","C"],["D-6229","C","B","D","A"],["D-6230","D","B","C","A"],["D-6231","C","B","A","D"],["D-6232","D","A","B","C"],["D-6233","D","B","C","A"],["D-6234","D","A","B","C"],["D-6235","A","C","B","D"],["D-6236","B","C","A","D"],["D-6237","D","A","B","C"],["D-6238","B","C","D","A"],["D-6239","D","C","B","A"],["D-6240","B","C","A","D"],["D-6241","C","D","A","B"],["D-6242","C","A","B","D"],["D-6243","B","C","D","A"],["D-6244","D","A","C","B"],["D-6245","C","D","B","A"],["D-6246","C","D","A","B"],["D-6247","C","B","A","D"],["D-6248","C","B","D","A"],["D-6249","C","B","D","A"],["D-6250","A","C","B","D"]]},
+"dei_9":{label:"DEI Committee Chair — 9 candidates",electionName:"DEI Committee Chair",seats:1,candidates:{"A":"Alvarez","B":"Blackwell","C":"Cortez","D":"Dawson","E":"Espinoza","F":"Freeman","G":"Gutierrez","H":"Holbrook","I":"Ito"},ballots:[["D-6001","H","D","A","C","G","B","F","I","E"],["D-6002","G","E","D","C","I","B","H","F","A"],["D-6003","A","G","C","F","B","I","H","D","E"],["D-6004","H","G","B","D","I","C","A","F","E"],["D-6005","F","E","G","B","D","A","C","H","I"],["D-6006","H","B","G","A","I","E","C","F","D"],["D-6007","I","F","B","A","G","H","E","C","D"],["D-6008","G","C","B","I","F","E","D","H","A"],["D-6009","B","A","E","C","H","I","G","D","F"],["D-6010","B","E","I","G","F","C","D","H","A"],["D-6011","C","G","B","A","H","F","D","E","I"],["D-6012","I","B","A","C","D","E","H","F","G"],["D-6013","E","C","B","F","G","I","A","H","D"],["D-6014","B","E","G","D","H","I","A","C","F"],["D-6015","E","I","G","B","F","C","D","H","A"],["D-6016","B","A","C","G","H","I","D","F","E"],["D-6017","D","I","B","F","H","C","A","E","G"],["D-6018","B","G","I","A","C","D","E","H","F"],["D-6019","D","G","B","E","F","A","C","I","H"],["D-6020","A","E","C","I","F","B","D","H","G"],["D-6021","A","I","C","H","G","D","B","E","F"],["D-6022","D","I","A","H","E","F","B","G","C"],["D-6023","G","E","C","A","F","B","I","D","H"],["D-6024","G","C","I","E","D","A","F","H","B"],["D-6025","B","A","I","F","E","C","H","G","D"],["D-6026","F","A","B","E","C","I","D","G","H"],["D-6027","B","E","C","G","I","H","F","D","A"],["D-6028","F","G","I","D","E","C","A","B","H"],["D-6029","B","H","F","A","G","D","I","C","E"],["D-6030","H","E","A","B","C","F","I","G","D"],["D-6031","G","C","B","I","H","E","D","F","A"],["D-6032","C","I","A","E","G","B","F","H","D"],["D-6033","I","C","E","F","H","A","B","G","D"],["D-6034","I","H","E","C","B","A","F","G","D"],["D-6035","F","G","B","D","H","A","C","I","E"],["D-6036","B","A","G","C","E","F","H","I","D"],["D-6037","C","G","D","I","H","F","A","E","B"],["D-6038","H","I","G","D","B","E","F","C","A"],["D-6039","C","F","I","B","A","G","D","E","H"],["D-6040","D","F","G","C","A","E","H","I","B"],["D-6041","I","B","H","A","D","E","F","C","G"],["D-6042","D","B","H","E","F","A","I","C","G"],["D-6043","B","G","E","I","A","F","C","H","D"],["D-6044","D","I","F","C","B","A","G","E","H"],["D-6045","E","I","C","B","D","H","G","A","F"],["D-6046","E","D","G","C","I","A","H","F","B"],["D-6047","B","E","F","C","I","A","G","D","H"],["D-6048","E","D","I","A","F","H","G","C","B"],["D-6049","G","A","E","F","C","B","I","H","D"],["D-6050","B","C","F","A","D","H","E","I","G"],["D-6051","I","B","H","G","F","C","E","D","A"],["D-6052","I","C","G","D","A","B","H","E","F"],["D-6053","A","E","C","G","B","I","D","F","H"],["D-6054","B","G","D","F","I","H","E","A","C"],["D-6055","B","C","H","D","G","I","A","F","E"],["D-6056","E","I","F","A","B","G","C","D","H"],["D-6057","A","H","C","E","F","G","I","D","B"],["D-6058","G","B","E","A","D","I","H","C","F"],["D-6059","C","I","G","H","B","F","E","D","A"],["D-6060","I","F","H","B","C","E","D","G","A"],["D-6061","C","E","H","B","F","D","G","A","I"],["D-6062","H","E","C","D","F","I","G","B","A"],["D-6063","E","I","G","F","H","A","B","C","D"],["D-6064","H","D","C","E","A","F","I","B","G"],["D-6065","C","G","H","A","B","F","D","E","I"],["D-6066","B","A","D","I","F","E","C","H","G"],["D-6067","B","A","D","H","F","C","I","G","E"],["D-6068","A","E","I","G","B","D","C","H","F"],["D-6069","A","G","H","B","F","E","D","I","C"],["D-6070","H","G","C","D","B","E","A","I","F"],["D-6071","H","B","A","I","G","C","F","D","E"],["D-6072","F","C","I","H","B","E","G","D","A"],["D-6073","I","C","H","A","F","G","B","D","E"],["D-6074","A","C","D","H","E","G","B","F","I"],["D-6075","G","H","B","E","I","F","A","D","C"],["D-6076","C","G","E","H","B","A","D","I","F"],["D-6077","C","D","A","E","F","G","I","B","H"],["D-6078","D","A","B","G","I","F","H","C","E"],["D-6079","G","F","B","H","E","C","I","A","D"],["D-6080","D","E","F","H","A","B","C","I","G"],["D-6081","D","F","C","G","B","E","I","A","H"],["D-6082","C","F","H","G","I","D","E","A","B"],["D-6083","F","B","A","E","I","D","G","C","H"],["D-6084","E","G","H","C","B","D","I","F","A"],["D-6085","G","C","E","H","A","D","F","I","B"],["D-6086","E","C","B","I","H","D","G","F","A"],["D-6087","H","A","C","F","G","B","I","E","D"],["D-6088","D","F","G","E","C","B","I","H","A"],["D-6089","E","F","D","H","I","C","A","B","G"],["D-6090","A","F","E","I","D","H","G","B","C"],["D-6091","H","D","C","I","B","A","F","G","E"],["D-6092","B","G","C","I","F","A","E","D","H"],["D-6093","A","F","D","G","E","C","B","I","H"],["D-6094","D","H","F","A","B","G","C","I","E"],["D-6095","B","C","D","F","G","A","E","H","I"],["D-6096","A","F","C","D","I","H","B","E","G"],["D-6097","I","B","C","G","E","H","F","D","A"],["D-6098","F","E","B","H","A","G","I","C","D"],["D-6099","D","H","I","G","A","F","B","E","C"],["D-6100","G","F","B","D","I","E","A","H","C"],["D-6101","F","B","C","I","G","H","D","A","E"],["D-6102","D","I","H","C","B","F","G","E","A"],["D-6103","E","A","H","F","C","B","G","I","D"],["D-6104","C","B","H","I","G","D","E","A","F"],["D-6105","A","E","G","H","I","F","D","B","C"],["D-6106","B","E","G","D","A","F","C","H","I"],["D-6107","B","C","A","I","G","E","H","D","F"],["D-6108","D","F","B","E","C","G","I","A","H"],["D-6109","B","H","F","G","D","A","E","C","I"],["D-6110","A","I","D","G","C","B","E","H","F"],["D-6111","B","D","E","F","I","A","G","C","H"],["D-6112","G","A","H","D","F","I","B","E","C"],["D-6113","H","D","G","I","A","B","C","F","E"],["D-6114","D","I","E","H","G","A","F","B","C"],["D-6115","G","B","D","F","I","E","A","H","C"],["D-6116","G","B","F","D","H","C","A","E","I"],["D-6117","I","B","E","A","D","C","G","F","H"],["D-6118","A","B","G","D","H","C","F","I","E"],["D-6119","E","G","D","A","C","H","F","I","B"],["D-6120","D","E","G","C","A","F","I","H","B"],["D-6121","H","C","I","G","F","A","E","D","B"],["D-6122","A","I","B","C","D","F","G","E","H"],["D-6123","E","H","B","A","F","G","D","I","C"],["D-6124","F","G","D","C","H","I","A","B","E"],["D-6125","H","I","A","C","D","F","B","E","G"],["D-6126","G","D","E","I","H","A","F","C","B"],["D-6127","I","A","D","E","F","B","C","H","G"],["D-6128","H","G","C","A","I","D","F","B","E"],["D-6129","H","C","G","B","I","F","D","E","A"],["D-6130","D","F","H","B","G","E","A","I","C"],["D-6131","G","E","B","A","F","D","I","C","H"],["D-6132","H","C","D","F","A","G","E","I","B"],["D-6133","G","C","D","A","F","I","H","E","B"],["D-6134","H","A","I","B","C","F","G","E","D"],["D-6135","B","E","I","F","G","C","D","A","H"],["D-6136","H","I","A","E","G","F","D","B","C"],["D-6137","G","I","E","A","C","D","F","B","H"],["D-6138","A","C","I","B","H","E","G","D","F"],["D-6139","B","H","G","A","I","D","E","C","F"],["D-6140","I","H","E","B","C","A","D","G","F"],["D-6141","H","A","G","D","C","F","B","E","I"],["D-6142","H","A","E","G","C","D","F","B","I"],["D-6143","E","H","G","I","B","A","C","F","D"],["D-6144","D","A","E","B","F","C","I","H","G"],["D-6145","F","B","D","E","C","G","H","I","A"],["D-6146","B","F","H","D","C","A","E","G","I"],["D-6147","B","G","E","H","D","I","F","C","A"],["D-6148","I","G","F","C","E","B","D","A","H"],["D-6149","H","B","F","C","G","A","I","D","E"],["D-6150","A","I","G","F","E","D","B","H","C"],["D-6151","E","A","G","H","B","C","D","F","I"],["D-6152","H","F","D","G","B","I","E","A","C"],["D-6153","H","D","I","B","F","A","G","C","E"],["D-6154","I","B","F","D","H","E","A","G","C"],["D-6155","A","B","H","D","F","C","E","G","I"],["D-6156","C","D","F","B","H","A","I","G","E"],["D-6157","B","C","D","A","E","H","G","F","I"],["D-6158","A","C","D","I","B","H","G","E","F"],["D-6159","A","B","I","G","F","H","D","E","C"],["D-6160","E","C","H","F","B","G","A","I","D"],["D-6161","F","C","H","E","G","D","I","A","B"],["D-6162","A","F","D","E","H","C","I","B","G"],["D-6163","D","H","F","A","I","E","C","B","G"],["D-6164","G","B","D","E","I","A","F","H","C"],["D-6165","D","F","B","A","H","I","C","G","E"],["D-6166","B","G","E","I","D","H","F","A","C"],["D-6167","E","H","F","G","A","C","I","B","D"],["D-6168","E","A","H","D","C","F","G","B","I"],["D-6169","G","A","C","F","I","D","B","E","H"],["D-6170","B","F","E","I","A","D","H","G","C"],["D-6171","D","A","B","I","G","E","C","H","F"],["D-6172","H","C","E","G","F","B","A","D","I"],["D-6173","C","H","A","I","B","G","F","D","E"],["D-6174","G","C","E","I","F","A","D","H","B"],["D-6175","G","I","D","E","C","H","F","A","B"],["D-6176","F","A","D","B","H","G","E","C","I"],["D-6177","F","I","G","H","A","B","D","C","E"],["D-6178","I","D","G","E","B","F","H","A","C"],["D-6179","G","H","E","D","I","F","B","A","C"],["D-6180","A","C","E","H","D","F","G","I","B"],["D-6181","D","B","E","F","H","A","C","I","G"],["D-6182","A","I","D","C","G","H","F","E","B"],["D-6183","G","B","I","C","F","D","E","H","A"],["D-6184","I","C","D","F","B","H","E","G","A"],["D-6185","B","F","G","I","H","D","A","E","C"],["D-6186","A","E","B","H","C","I","D","F","G"],["D-6187","H","C","B","G","E","A","I","D","F"],["D-6188","D","E","H","I","C","B","A","G","F"],["D-6189","D","I","B","E","H","C","A","F","G"],["D-6190","I","B","H","D","G","E","A","C","F"],["D-6191","C","E","B","G","I","F","A","H","D"],["D-6192","A","C","E","H","D","B","F","G","I"],["D-6193","F","C","B","I","D","E","H","A","G"],["D-6194","I","H","C","G","E","D","A","B","F"],["D-6195","C","G","D","I","F","B","E","A","H"],["D-6196","B","D","F","H","A","G","C","E","I"],["D-6197","F","B","I","G","H","C","D","E","A"],["D-6198","A","E","G","H","F","I","D","B","C"],["D-6199","I","C","A","F","D","B","E","G","H"],["D-6200","B","A","H","E","F","D","G","C","I"],["D-6201","A","I","B","F","G","C","H","D","E"],["D-6202","H","F","G","D","C","E","B","I","A"],["D-6203","I","A","C","B","H","D","E","F","G"],["D-6204","B","G","I","A","F","H","D","E","C"],["D-6205","E","A","I","C","G","F","H","D","B"],["D-6206","F","E","C","A","H","B","G","I","D"],["D-6207","D","F","A","C","E","I","H","B","G"],["D-6208","A","E","G","B","C","D","H","F","I"],["D-6209","H","I","A","G","E","D","F","B","C"],["D-6210","A","D","H","F","C","B","I","G","E"],["D-6211","E","F","I","C","H","D","G","B","A"],["D-6212","C","G","F","E","H","A","B","I","D"],["D-6213","G","D","I","C","A","E","B","F","H"],["D-6214","F","C","G","I","A","D","E","B","H"],["D-6215","F","I","H","B","G","E","D","A","C"],["D-6216","D","A","F","G","E","I","C","B","H"],["D-6217","D","H","A","F","I","B","E","C","G"],["D-6218","C","H","A","E","D","G","B","F","I"],["D-6219","F","B","E","C","H","D","G","I","A"],["D-6220","A","I","E","H","C","D","F","G","B"],["D-6221","B","A","E","I","G","H","C","F","D"],["D-6222","C","H","G","F","E","D","I","A","B"],["D-6223","A","C","G","D","I","H","B","F","E"],["D-6224","I","C","G","B","A","D","F","E","H"],["D-6225","E","A","I","F","D","H","G","C","B"],["D-6226","E","C","A","D","H","B","G","I","F"],["D-6227","C","B","D","E","H","I","G","F","A"],["D-6228","E","G","A","C","I","B","D","F","H"],["D-6229","I","B","F","E","D","G","A","H","C"],["D-6230","F","B","A","C","G","I","D","E","H"],["D-6231","B","D","F","A","C","H","I","G","E"],["D-6232","F","H","I","D","B","G","E","A","C"],["D-6233","D","G","C","B","A","E","I","F","H"],["D-6234","B","H","E","F","D","G","I","C","A"],["D-6235","E","B","C","I","F","D","G","A","H"],["D-6236","B","C","H","G","D","I","F","A","E"],["D-6237","A","H","F","I","D","C","G","E","B"],["D-6238","G","F","E","A","B","D","I","C","H"],["D-6239","H","E","D","A","G","F","B","C","I"],["D-6240","G","A","I","H","D","E","C","B","F"],["D-6241","F","H","G","E","I","A","D","B","C"],["D-6242","B","A","D","I","H","F","G","E","C"],["D-6243","C","B","H","I","A","F","E","D","G"],["D-6244","D","C","H","G","B","F","A","E","I"],["D-6245","H","B","C","I","F","A","E","G","D"],["D-6246","E","G","D","H","A","C","I","F","B"],["D-6247","B","C","F","A","G","E","D","I","H"],["D-6248","F","A","D","E","G","H","C","B","I"],["D-6249","E","F","A","D","B","H","I","G","C"],["D-6250","C","D","G","I","A","B","H","E","F"]]}
+};
+
+
+// =========================================================================
+// SAMPLE DATA — 26 ballots from original RCV Research spreadsheet
+// =========================================================================
+const SAMPLE_BALLOTS = [
+  { id: "D-6341", ranks: ["G","D","C","A","F","E","B"] },
+  { id: "D-6279", ranks: ["C","B","A","D","E","G","F"] },
+  { id: "D-6094", ranks: ["G","D","F","B","A","C","E"] },
+  { id: "D-6302", ranks: ["F","A","D","E","B","G","C"] },
+  { id: "D-6598", ranks: ["E","F","B","C","G","D","A"] },
+  { id: "D-6161", ranks: ["C","E","B","F","D","A","G"] },
+  { id: "D-6164", ranks: ["B","A","D","F","G","C","E"] },
+  { id: "D-6029", ranks: ["C","E","D","B","G","A","F"] },
+  { id: "D-6007", ranks: ["E","C","F","D","A","B","G"] },
+  { id: "D-6190", ranks: ["D","A","E","G","B","C","F"] },
+  { id: "D-6071", ranks: ["D","E","G","B","A","C","F"] },
+  { id: "D-6063", ranks: ["G","A","E","C","F","D","B"] },
+  { id: "D-6058", ranks: ["G","D","E","B","A","C","F"] },
+  { id: "D-6036", ranks: ["E","G","F","B","A","C","D"] },
+  { id: "D-6189", ranks: ["A","G","C","E","D","F","B"] },
+  { id: "D-6027", ranks: ["A","D","F","E","G","C","B"] },
+  { id: "D-6174", ranks: ["C","A","B","G","D","E","F"] },
+  { id: "D-6229", ranks: ["G","C","F","A","D","E","B"] },
+  { id: "D-6140", ranks: ["E","A","C","D","G","F","B"] },
+  { id: "D-6023", ranks: ["A","B","C","F","E","G","D"] },
+  { id: "D-6152", ranks: ["G","B","D","C","F","A","E"] },
+  { id: "D-6109", ranks: ["F","G","E","B","D","C","A"] },
+  { id: "D-6009", ranks: ["D","A","E","B","C","G","F"] },
+  { id: "D-6008", ranks: ["E","D","A","B","C","F","G"] },
+  { id: "D-6024", ranks: ["D","F","C","A","E","B","G"] },
+  { id: "D-6056", ranks: ["G","E","B","C","F","A","D"] },
+];
+
+// =========================================================================
+// STATE
+// =========================================================================
+let ballots = [];
+let candidateMap = {};
+let candidateKeys = [];
+let numSeats = 4;
+let elimThreshold = 0.15;
+let electionName = "";
+let allSteps = [];
+let currentStepIdx = -1;
+let autoPlayTimer = null;
+let isAutoPlaying = false;
+let electedAll = [];
+
+// =========================================================================
+// SCENARIO HANDLING
+// =========================================================================
+function onScenarioChange() {
+  const key = document.getElementById('scenario-select').value;
+  const namesRow = document.getElementById('candidate-names-row');
+  const csvSection = document.getElementById('csv-section');
+  const candSection = document.getElementById('candidate-names-section');
+  const info = document.getElementById('scenario-info');
+
+  if (key === 'custom') {
+    csvSection.classList.remove('hidden');
+    candSection.classList.remove('hidden');
+    namesRow.innerHTML = '';
+    info.textContent = 'Enter custom ballot data as CSV.';
+    document.getElementById('election-name').value = '';
+    document.getElementById('num-seats').value = '4';
+    return;
+  }
+
+  csvSection.classList.add('hidden');
+  candSection.classList.remove('hidden');
+
+  const sc = TEST_SCENARIOS[key];
+  document.getElementById('election-name').value = sc.electionName;
+  document.getElementById('num-seats').value = sc.seats;
+  info.textContent = `${sc.ballots.length} ballots, ${Object.keys(sc.candidates).length} candidates, ${sc.seats} seat(s)`;
+
+  namesRow.innerHTML = '';
+  const sortedKeys = Object.keys(sc.candidates).sort();
+  for (const k of sortedKeys) {
+    const div = document.createElement('div');
+    div.className = 'setup-field';
+    div.style.marginBottom = '4px';
+    div.innerHTML = `<label>${k}</label>
+      <input type="text" class="cand-name-input" data-key="${k}" value="${sc.candidates[k]}" style="width:120px">`;
+    namesRow.appendChild(div);
+  }
+}
+
+function loadScenario() {
+  const key = document.getElementById('scenario-select').value;
+  if (key === 'custom') return loadCSVBallots();
+
+  const sc = TEST_SCENARIOS[key];
+  candidateMap = {};
+  document.querySelectorAll('.cand-name-input').forEach(inp => {
+    candidateMap[inp.dataset.key] = inp.value.trim() || `Candidate ${inp.dataset.key}`;
+  });
+  candidateKeys = Object.keys(candidateMap).sort();
+
+  ballots = sc.ballots.map(arr => {
+    const id = arr[0];
+    const rankings = {};
+    for (let i = 1; i < arr.length; i++) {
+      rankings[arr[i]] = i;
+    }
+    return { id, rankings };
+  });
+  return true;
+}
+
+function loadCSVBallots() {
+  const text = document.getElementById('csv-input').value.trim();
+  if (!text) { alert('Please paste ballot data.'); return false; }
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+  const foundKeys = new Set();
+  const parsed = [];
+  for (const line of lines) {
+    const parts = line.split(',').map(s => s.trim());
+    if (parts.length < 2) continue;
+    const id = parts[0];
+    const rankings = {};
+    for (let i = 1; i < parts.length; i++) {
+      const letter = parts[i].toUpperCase();
+      if (/^[A-Z]$/.test(letter)) {
+        rankings[letter] = i;
+        foundKeys.add(letter);
+      }
+    }
+    parsed.push({ id, rankings });
+  }
+  if (parsed.length === 0) { alert('No valid ballots found.'); return false; }
+  candidateKeys = Array.from(foundKeys).sort();
+  candidateMap = {};
+  candidateKeys.forEach(k => { candidateMap[k] = `Candidate ${k}`; });
+  ballots = parsed;
+  return true;
+}
+
+// =========================================================================
+// IRV ENGINE — Only winners removed between seats
+// =========================================================================
+function computeAllSteps() {
+  allSteps = [];
+  electedAll = [];
+
+  const maxSeat1Round1Wins = Math.max(1, Math.floor(numSeats * 0.5));
+
+  for (let seat = 1; seat <= numSeats; seat++) {
+    let active = candidateKeys.filter(k => !electedAll.some(e => e.key === k));
+
+    if (active.length === 0) {
+      allSteps.push({ type: 'no-candidates', seat, message: `No remaining candidates for Seat ${seat}.` });
+      break;
+    }
+    if (active.length === 1) {
+      const winKey = active[0];
+      electedAll.push({ key: winKey, name: candidateMap[winKey], seat });
+      allSteps.push({ type: 'uncontested', seat, winner: winKey,
+        message: `Only one candidate remaining — ${candidateMap[winKey]} elected (Seat ${seat}).` });
+      continue;
+    }
+
+    // Seat start marker
+    allSteps.push({ type: 'seat-start', seat, active: [...active],
+      message: `Starting Seat ${seat} — ${active.length} candidates in pool` });
+
+    let seatRound = 1;
+    let seatActive = [...active];
+
+    while (seatActive.length > 1) {
+      const { voteCounts, totalActive, exhausted, assignments } = countVotes(ballots, seatActive);
+      const majorityNeeded = Math.floor(totalActive * 0.5) + 1;
+      const thresholdVotes = totalActive * elimThreshold;
+
+      const potentialWinners = seatActive.filter(k => voteCounts[k] >= majorityNeeded);
+
+      if (potentialWinners.length > 0) {
+        let cappedWinners = potentialWinners;
+        if (seat === 1 && seatRound === 1) {
+          cappedWinners = potentialWinners.slice(0, maxSeat1Round1Wins);
+        }
+        const winKey = cappedWinners[0];
+        electedAll.push({ key: winKey, name: candidateMap[winKey], seat });
+        allSteps.push({
+          type: 'round', seat, seatRound,
+          voteCounts: { ...voteCounts }, totalActive, exhausted, majorityNeeded, thresholdVotes,
+          active: [...seatActive], elected: [winKey], eliminated: [],
+          elimReason: '', redistDetail: null, assignments: { ...assignments },
+        });
+        break;
+      }
+
+      let toEliminate = [];
+      let elimReason = '';
+      const sorted = seatActive.slice().sort((a, b) => voteCounts[a] - voteCounts[b]);
+
+      if (seatRound === 1) {
+        const belowThreshold = seatActive.filter(k => voteCounts[k] < thresholdVotes);
+        const maxElim = Math.max(1, Math.floor((seatActive.length - 1) / 2));
+        if (belowThreshold.length > maxElim) {
+          toEliminate = sorted.slice(0, maxElim);
+        } else if (belowThreshold.length > 0) {
+          toEliminate = belowThreshold;
+        } else {
+          toEliminate = [sorted[0]];
+        }
+        if (!toEliminate.includes(sorted[0])) {
+          toEliminate.push(sorted[0]);
+        }
+        elimReason = `Below ${(elimThreshold*100).toFixed(0)}% elimination threshold`;
+      } else {
+        const lowestVotes = voteCounts[sorted[0]];
+        const tiedForLowest = seatActive.filter(k => voteCounts[k] === lowestVotes);
+        if (tiedForLowest.length === 1) {
+          toEliminate = [sorted[0]];
+          elimReason = `Lowest vote-getter (${(lowestVotes/totalActive*100).toFixed(1)}%)`;
+        } else {
+          toEliminate = [tiedForLowest.sort()[0]];
+          elimReason = `Tie for lowest — alphabetical tiebreak (demonstration only; convention uses runoff ballot)`;
+        }
+      }
+
+      const redistDetail = computeRedistribution(assignments, toEliminate, seatActive);
+
+      allSteps.push({
+        type: 'round', seat, seatRound,
+        voteCounts: { ...voteCounts }, totalActive, exhausted, majorityNeeded, thresholdVotes,
+        active: [...seatActive], elected: [], eliminated: [...toEliminate],
+        elimReason, redistDetail, assignments: { ...assignments },
+      });
+
+      for (const k of toEliminate) {
+        seatActive = seatActive.filter(x => x !== k);
+      }
+
+      if (seatActive.length === 1) {
+        const winKey = seatActive[0];
+        const r2 = countVotes(ballots, seatActive);
+        electedAll.push({ key: winKey, name: candidateMap[winKey], seat });
+        allSteps.push({
+          type: 'round', seat, seatRound: seatRound + 1,
+          voteCounts: r2.voteCounts, totalActive: r2.totalActive, exhausted: r2.exhausted,
+          majorityNeeded: 1, thresholdVotes: 0,
+          active: [...seatActive], elected: [winKey], eliminated: [],
+          elimReason: 'Last candidate standing', redistDetail: null, assignments: r2.assignments,
+        });
+        break;
+      }
+      seatRound++;
+    }
+  }
+  allSteps.push({ type: 'summary' });
+}
+
+function countVotes(ballotList, activeKeys) {
+  const voteCounts = {};
+  activeKeys.forEach(k => { voteCounts[k] = 0; });
+  let exhausted = 0;
+  const assignments = {};
+  activeKeys.forEach(k => { assignments[k] = []; });
+  assignments._exhausted = [];
+
+  for (const b of ballotList) {
+    const choice = getFirstActiveChoice(b, activeKeys);
+    if (choice === null) {
+      exhausted++;
+      assignments._exhausted.push(b);
+    } else {
+      voteCounts[choice]++;
+      assignments[choice].push(b);
+    }
+  }
+  const totalActive = Object.values(voteCounts).reduce((a, b) => a + b, 0);
+  return { voteCounts, totalActive, exhausted, assignments };
+}
+
+function getFirstActiveChoice(ballot, activeKeys) {
+  let bestKey = null;
+  let bestRank = Infinity;
+  for (const k of activeKeys) {
+    const rank = ballot.rankings[k];
+    if (rank && rank > 0 && rank < bestRank) {
+      bestRank = rank;
+      bestKey = k;
+    }
+  }
+  return bestKey;
+}
+
+function computeRedistribution(assignments, eliminatedKeys, allActive) {
+  const remaining = allActive.filter(k => !eliminatedKeys.includes(k));
+  const detail = [];
+  for (const elimKey of eliminatedKeys) {
+    const elimBallots = assignments[elimKey] || [];
+    const moves = [];
+    for (const b of elimBallots) {
+      const nextChoice = getFirstActiveChoice(b, remaining);
+      moves.push({ ballotId: b.id, toKey: nextChoice });
+    }
+    detail.push({ fromKey: elimKey, fromName: candidateMap[elimKey], ballotCount: elimBallots.length, moves });
+  }
+  return detail;
+}
+
+// =========================================================================
+// DISPLAY
+// =========================================================================
+function renderStep(stepIdx) {
+  if (stepIdx < 0 || stepIdx >= allSteps.length) return;
+  const step = allSteps[stepIdx];
+
+  if (step.type === 'no-candidates') {
+    addLogEntry(step.message, 'log-info');
+    return;
+  }
+  if (step.type === 'uncontested') {
+    addLogEntry(step.message, 'log-winner');
+    return;
+  }
+  if (step.type === 'seat-start') {
+    addLogEntry(`── SEAT ${step.seat} ── ${step.active.length} candidates: ${step.active.map(k => candidateMap[k]+' ('+k+')').join(', ')}`, 'log-seat');
+    return;
+  }
+  if (step.type === 'summary') {
+    renderSummary();
+    setStatus('complete', 'Complete');
+    document.getElementById('btn-step').disabled = true;
+    document.getElementById('btn-auto').disabled = true;
+    return;
+  }
+
+  const { seat, seatRound, voteCounts, totalActive, exhausted,
+          majorityNeeded, thresholdVotes, active, elected, eliminated,
+          elimReason, redistDetail } = step;
+
+  document.getElementById('vp-title').textContent = `${electionName} — Seat ${seat}`;
+  document.getElementById('vp-round-info').textContent =
+    `Distribution Round ${seatRound} · ${totalActive} active ballots · ${exhausted} exhausted`;
+
+  const container = document.getElementById('vp-candidates');
+  container.innerHTML = '';
+  const maxVotes = Math.max(...Object.values(voteCounts), 1);
+  const sorted = active.slice().sort((a, b) => (voteCounts[b] || 0) - (voteCounts[a] || 0));
+
+  for (const key of sorted) {
+    const votes = voteCounts[key] || 0;
+    const pct = totalActive > 0 ? (votes / totalActive * 100) : 0;
+    const barPct = (votes / maxVotes * 100).toFixed(1);
+    let barClass = 'active', statusText = '', statusClass = '';
+    if (elected.includes(key)) { barClass = 'elected'; statusText = 'ELECTED'; statusClass = 'elected-tag'; }
+    else if (eliminated.includes(key)) { barClass = 'eliminated'; statusText = 'ELIMINATED'; statusClass = 'elim-tag'; }
+
+    const row = document.createElement('div');
+    row.className = 'candidate-row';
+    row.innerHTML = `
+      <div class="cand-label">${candidateMap[key]} (${key})</div>
+      <div class="cand-bar-wrap">
+        <div class="cand-bar ${barClass}" style="width:${barPct}%">${votes > 0 && parseFloat(barPct) > 12 ? votes : ''}</div>
+      </div>
+      <div class="cand-votes">${votes}</div>
+      <div class="cand-pct">${pct.toFixed(1)}%</div>
+      <div class="cand-status ${statusClass}">${statusText}</div>`;
+    container.appendChild(row);
+  }
+
+  if (exhausted > 0) {
+    const row = document.createElement('div');
+    row.className = 'candidate-row';
+    const exPct = ((exhausted / (totalActive + exhausted)) * 100).toFixed(1);
+    row.innerHTML = `
+      <div class="cand-label" style="color:#999">Exhausted</div>
+      <div class="cand-bar-wrap"><div class="cand-bar exhausted-bar" style="width:${(exhausted/maxVotes*100).toFixed(1)}%"></div></div>
+      <div class="cand-votes" style="color:#999">${exhausted}</div>
+      <div class="cand-pct" style="color:#999">${exPct}%</div>
+      <div class="cand-status"></div>`;
+    container.appendChild(row);
+  }
+
+  document.getElementById('vp-thresholds').innerHTML = `
+    <div class="threshold-line">
+      Majority needed (&gt;50%): <span>${majorityNeeded} votes</span> &nbsp;|&nbsp;
+      15% threshold: <span>${thresholdVotes.toFixed(1)} votes</span> &nbsp;|&nbsp;
+      Active ballots: <span>${totalActive}</span>
+    </div>`;
+
+  if (elected.length > 0) {
+    for (const k of elected) {
+      addLogEntry(`Seat ${seat}, Round ${seatRound}: ${candidateMap[k]} ELECTED — ${voteCounts[k]} votes (${(voteCounts[k]/totalActive*100).toFixed(1)}%)`, 'log-winner');
+    }
+  }
+  if (eliminated.length > 0) {
+    const names = eliminated.map(k => `${candidateMap[k]} (${k})`).join(', ');
+    addLogEntry(`Seat ${seat}, Round ${seatRound}: Eliminated ${names} — ${elimReason}`, 'log-elim');
+  }
+
+  renderRedistDetail(step);
+}
+
+function renderRedistDetail(step) {
+  const content = document.getElementById('redist-content');
+  const subtitle = document.getElementById('redist-subtitle');
+
+  if (!step.redistDetail || step.redistDetail.length === 0) {
+    if (step.elected && step.elected.length > 0) {
+      subtitle.textContent = `${candidateMap[step.elected[0]]} wins this seat!`;
+      content.innerHTML = `<p style="font-size:0.9rem;color:var(--green);font-weight:600;">
+        Winner: ${candidateMap[step.elected[0]]} with ${step.voteCounts[step.elected[0]]} votes
+        (${(step.voteCounts[step.elected[0]]/step.totalActive*100).toFixed(1)}%)</p>`;
+    } else {
+      subtitle.textContent = 'No redistribution for this step.';
+      content.innerHTML = '';
+    }
+    return;
+  }
+
+  subtitle.textContent = 'Ballot movement after elimination:';
+  content.innerHTML = '';
+
+  for (const group of step.redistDetail) {
+    const groupDiv = document.createElement('div');
+    groupDiv.className = 'redist-group';
+    groupDiv.innerHTML = `<div class="redist-group-header from-candidate">
+      From ${group.fromName} (${group.fromKey}) — ${group.ballotCount} ballot(s)</div>`;
+
+    const byDest = {};
+    let exhaustedMoves = [];
+    for (const m of group.moves) {
+      if (m.toKey === null) { exhaustedMoves.push(m); }
+      else { if (!byDest[m.toKey]) byDest[m.toKey] = []; byDest[m.toKey].push(m); }
+    }
+
+    for (const destKey of Object.keys(byDest).sort()) {
+      const moves = byDest[destKey];
+      const destDiv = document.createElement('div');
+      destDiv.innerHTML = `<div class="redist-group-header to-candidate">
+        → ${candidateMap[destKey]} (${destKey}): ${moves.length} ballot(s)</div>`;
+      // Show first 20 ballots, summarize if more
+      const show = moves.slice(0, 20);
+      for (const m of show) {
+        destDiv.innerHTML += `<div class="redist-ballot"><span class="delegate-id">${m.ballotId}</span></div>`;
+      }
+      if (moves.length > 20) {
+        destDiv.innerHTML += `<div class="redist-ballot" style="font-style:italic;">...and ${moves.length - 20} more</div>`;
+      }
+      groupDiv.appendChild(destDiv);
+    }
+
+    if (exhaustedMoves.length > 0) {
+      const exDiv = document.createElement('div');
+      exDiv.innerHTML = `<div class="redist-group-header exhausted-hdr">→ Exhausted: ${exhaustedMoves.length} ballot(s)</div>`;
+      const show = exhaustedMoves.slice(0, 10);
+      for (const m of show) {
+        exDiv.innerHTML += `<div class="redist-ballot"><span class="delegate-id">${m.ballotId}</span></div>`;
+      }
+      if (exhaustedMoves.length > 10) {
+        exDiv.innerHTML += `<div class="redist-ballot" style="font-style:italic;">...and ${exhaustedMoves.length - 10} more</div>`;
+      }
+      groupDiv.appendChild(exDiv);
+    }
+    content.appendChild(groupDiv);
+  }
+}
+
+function renderSummary() {
+  const panel = document.getElementById('summary-panel');
+  const results = document.getElementById('summary-results');
+  panel.classList.remove('hidden');
+  if (electedAll.length === 0) { results.innerHTML = '<p>No candidates were elected.</p>'; return; }
+  results.innerHTML = '';
+  for (const w of electedAll) {
+    results.innerHTML += `<div class="winner-row">
+      <span class="winner-seat">Seat ${w.seat}</span>
+      <span class="winner-name">${w.name} (${w.key})</span></div>`;
+  }
+  addLogEntry(`Election complete. ${electedAll.length} seat(s) filled.`, 'log-info');
+}
+
+function addLogEntry(text, className) {
+  const container = document.getElementById('log-entries');
+  const entry = document.createElement('div');
+  entry.className = `log-entry ${className}`;
+  entry.textContent = text;
+  container.insertBefore(entry, container.firstChild);
+}
+
+function setStatus(type, text) {
+  const badge = document.getElementById('status-badge');
+  badge.className = `status-badge status-${type}`;
+  badge.textContent = text;
+}
+
+// =========================================================================
+// CONTROLS
+// =========================================================================
+function startTabulation() {
+  if (!loadScenario()) return;
+  electionName = document.getElementById('election-name').value.trim() || 'Election';
+  numSeats = parseInt(document.getElementById('num-seats').value) || 4;
+  elimThreshold = parseFloat(document.getElementById('elim-threshold').value) || 0.15;
+
+  computeAllSteps();
+  if (allSteps.length === 0) { alert('No steps generated.'); return; }
+
+  document.getElementById('controls-bar').classList.remove('hidden');
+  document.getElementById('display-area').classList.remove('hidden');
+  document.getElementById('setup-panel').classList.add('hidden');
+  currentStepIdx = -1;
+  setStatus('paused', 'Ready — Step Forward to begin');
+  addLogEntry(`${electionName}: ${ballots.length} ballots, ${candidateKeys.length} candidates, ${numSeats} seat(s)`, 'log-info');
+  addLogEntry(`Rules: ${(elimThreshold*100).toFixed(0)}% threshold, >50% to win, winners-only removal between seats`, 'log-info');
+}
+
+function stepForward() {
+  if (currentStepIdx >= allSteps.length - 1) return;
+  currentStepIdx++;
+  renderStep(currentStepIdx);
+  setStatus('paused', `Step ${currentStepIdx + 1} of ${allSteps.length}`);
+  if (currentStepIdx >= allSteps.length - 1) {
+    document.getElementById('btn-step').disabled = true;
+    document.getElementById('btn-auto').disabled = true;
+    stopAutoPlay();
+  }
+}
+
+function getSpeed() {
+  return parseInt(document.getElementById('speed-slider').value) || 2000;
+}
+
+function toggleAutoPlay() {
+  if (isAutoPlaying) stopAutoPlay();
+  else startAutoPlay();
+}
+
+function startAutoPlay() {
+  isAutoPlaying = true;
+  document.getElementById('btn-auto').textContent = 'Playing...';
+  document.getElementById('btn-auto').classList.remove('btn-gold');
+  document.getElementById('btn-auto').classList.add('btn-danger');
+  document.getElementById('btn-pause').disabled = false;
+  setStatus('running', 'Auto-playing...');
+  autoPlayTimer = setInterval(() => {
+    if (currentStepIdx >= allSteps.length - 1) { stopAutoPlay(); return; }
+    stepForward();
+  }, getSpeed());
+}
+
+function stopAutoPlay() {
+  isAutoPlaying = false;
+  if (autoPlayTimer) { clearInterval(autoPlayTimer); autoPlayTimer = null; }
+  document.getElementById('btn-auto').textContent = 'Auto-Play';
+  document.getElementById('btn-auto').classList.add('btn-gold');
+  document.getElementById('btn-auto').classList.remove('btn-danger');
+  document.getElementById('btn-pause').disabled = true;
+  if (currentStepIdx < allSteps.length - 1) {
+    setStatus('paused', `Paused at step ${currentStepIdx + 1} of ${allSteps.length}`);
+  }
+}
+
+function pauseTabulation() { stopAutoPlay(); }
+
+function resetAll() {
+  stopAutoPlay();
+  currentStepIdx = -1;
+  allSteps = [];
+  electedAll = [];
+  document.getElementById('setup-panel').classList.remove('hidden');
+  document.getElementById('controls-bar').classList.add('hidden');
+  document.getElementById('display-area').classList.add('hidden');
+  document.getElementById('summary-panel').classList.add('hidden');
+  document.getElementById('log-entries').innerHTML = '';
+  document.getElementById('vp-candidates').innerHTML = '';
+  document.getElementById('redist-content').innerHTML = '';
+  document.getElementById('redist-subtitle').textContent = 'Step through the tabulation to see ballot movement.';
+  document.getElementById('btn-step').disabled = false;
+  document.getElementById('btn-auto').disabled = false;
+}
+
+// Speed slider label
+document.getElementById('speed-slider').addEventListener('input', function() {
+  document.getElementById('speed-label').textContent = (this.value / 1000).toFixed(1) + 's';
+  if (isAutoPlaying) {
+    clearInterval(autoPlayTimer);
+    autoPlayTimer = setInterval(() => {
+      if (currentStepIdx >= allSteps.length - 1) { stopAutoPlay(); return; }
+      stepForward();
+    }, getSpeed());
+  }
+});
+
+// Init
+onScenarioChange();
+</script>
+</body>
+</html>

@@ -507,60 +507,117 @@ def generate_qr_and_display():
     _write_projection_html(display_path, election, noms, url)
     print(f"  ✓  Phase 1 projection display saved: {display_path}")
 
-    # ── Phase 2 (timed) ballot URL ───────────────────────────────────────
-    p2 = input("\n  Generate a Phase 2 (timed) ballot URL? (Y/N): ").strip().upper()
-    if p2 == "Y":
-        while True:
-            try:
-                minutes = int(input("  Duration in minutes for Phase 2: ").strip())
-                if minutes > 0:
-                    break
-                print("  ⚠  Enter a positive number of minutes.")
-            except ValueError:
-                print("  ⚠  Enter a whole number of minutes (e.g. 10).")
+    # ── Option C timer URLs (standby + admin signal) ─────────────────────
+    gen_timer = input(
+        "\n  Generate Option C timer URLs (standby + admin control)? (Y/N): "
+    ).strip().upper()
 
-        deadline_dt  = datetime.now() + timedelta(minutes=minutes)
-        deadline_iso = urllib.parse.quote(deadline_dt.isoformat(), safe="")
-        url_phase2   = f"{url}&deadline={deadline_iso}"
+    if gen_timer == "Y":
+        # Suggested duration: (candidates × 2) + 34 minutes for ranked ballots,
+        # or a flat prompt for slate/runoff (those are very quick).
+        num_cands = len(noms)
+        if election.get("type") in ("slate", "runoff") or num_cands == 0:
+            suggested = None
+        else:
+            suggested = (num_cands * 2) + 34
 
-        # QR code for Phase 2
-        qr_path2 = QR_DIR / f"qr_{key}_phase2.png"
+        if suggested:
+            print(f"\n  Suggested voting window: ({num_cands} candidates × 2) + 34 = "
+                  f"{suggested} minutes")
+            override = input(
+                f"  Use {suggested} minutes? Press Enter to accept, or type a different number: "
+            ).strip()
+            if override:
+                try:
+                    duration = int(override)
+                    if duration <= 0:
+                        raise ValueError
+                except ValueError:
+                    print("  ⚠  Invalid input — using suggested duration.")
+                    duration = suggested
+            else:
+                duration = suggested
+        else:
+            while True:
+                try:
+                    duration = int(input("  Voting window in minutes: ").strip())
+                    if duration > 0:
+                        break
+                    print("  ⚠  Enter a positive number of minutes.")
+                except ValueError:
+                    print("  ⚠  Enter a whole number of minutes.")
+
+        url_delegate = f"{url}&duration={duration}"
+        url_admin    = f"{url_delegate}&admin=1"
+
+        # ── QR code: delegate URL ─────────────────────────────────────────
+        qr_path_delegate = QR_DIR / f"qr_{key}_timer.png"
         if QRCODE_AVAILABLE:
-            qr2 = qrcode.QRCode(
+            qr_d = qrcode.QRCode(
                 version=None,
                 error_correction=qrcode.constants.ERROR_CORRECT_M,
                 box_size=10,
                 border=4,
             )
-            qr2.add_data(url_phase2)
-            qr2.make(fit=True)
-            img2 = qr2.make_image(fill_color="black", back_color="white")
-            img2.save(str(qr_path2))
-            print(f"  ✓  Phase 2 QR code saved: {qr_path2}")
+            qr_d.add_data(url_delegate)
+            qr_d.make(fit=True)
+            qr_d.make_image(fill_color="black", back_color="white").save(
+                str(qr_path_delegate)
+            )
+            print(f"\n  ✓  Delegate QR code saved : {qr_path_delegate}")
         else:
-            print("  ⚠  qrcode library not available — Phase 2 QR PNG not generated.")
+            print("\n  ⚠  qrcode library not available — delegate QR PNG not generated.")
             print("     The projection display will generate the QR code via JavaScript.")
 
-        # Projection display with Phase 2 badge
-        display_path2 = DISPLAY_DIR / f"display_{key}_phase2.html"
-        _write_projection_html(display_path2, election, noms, url_phase2,
-                               phase2_minutes=minutes)
-        print(f"  ✓  Phase 2 projection display saved: {display_path2}")
+        # ── QR code: admin URL ────────────────────────────────────────────
+        qr_path_admin = QR_DIR / f"qr_{key}_admin.png"
+        if QRCODE_AVAILABLE:
+            qr_a = qrcode.QRCode(
+                version=None,
+                error_correction=qrcode.constants.ERROR_CORRECT_M,
+                box_size=10,
+                border=4,
+            )
+            qr_a.add_data(url_admin)
+            qr_a.make(fit=True)
+            qr_a.make_image(fill_color="black", back_color="white").save(
+                str(qr_path_admin)
+            )
+            print(f"  ✓  Admin QR code saved    : {qr_path_admin}")
+        else:
+            print("  ⚠  qrcode library not available — admin QR PNG not generated.")
+
+        # ── Projection display: delegate URL ──────────────────────────────
+        display_path_timer = DISPLAY_DIR / f"display_{key}_timer.html"
+        _write_projection_html(display_path_timer, election, noms, url_delegate,
+                               timer_minutes=duration)
+        print(f"  ✓  Timer projection display saved : {display_path_timer}")
 
         print()
-        print(f"  Phase 1 URL : {url}")
-        print(f"  Phase 2 URL : {url_phase2}")
-        print(f"  Deadline    : {deadline_dt.strftime('%H:%M:%S  %B %d, %Y')}")
+        print("  ─" * 30)
+        print(f"  Delegate URL  : {url_delegate}")
+        print(f"  Admin URL     : {url_admin}")
+        print(f"  Voting window : {duration} minutes")
+        print()
+        print("  HOW TO USE:")
+        print("  1. Project the delegate URL / QR code — delegates scan and see STANDBY screen.")
+        print("  2. Open the Admin URL on the device you're running from.")
+        print("  3. On the Admin screen: enter credentials currently on the floor,")
+        print("     then click 'Open Voting' — all standby devices transition simultaneously.")
+        print("  4. To close early (100% voted), click 'Close Voting Early' on the Admin screen.")
+        print("  ─" * 30)
     else:
-        print(f"\n  Ballot URL (Phase 1 only): {url}")
+        print(f"\n  Ballot URL (no timer): {url}")
 
     print("\n  To project: open the HTML file in Chrome, then press F11 for fullscreen.")
 
 
-def _write_projection_html(path, election, nominees, url, phase2_minutes=None):
+def _write_projection_html(path, election, nominees, url, phase2_minutes=None,
+                           timer_minutes=None):
     """
     Generate a fullscreen HTML projection display showing:
-    - Election title and seat count (plus PHASE 2 badge when phase2_minutes is set)
+    - Election title and seat count
+    - Optional badge: PHASE 2 (timed deadline) or TIMER (Option C standby)
     - Lettered candidate list
     - QR code (generated in-browser via qrcodejs — works offline)
     - Ballot URL as text
@@ -704,6 +761,7 @@ def _write_projection_html(path, election, nominees, url, phase2_minutes=None):
   <p>Iowa Democratic Party — District Convention {datetime.now().year}</p>
   <div class="seats-badge">{election['label'].upper()} &nbsp;|&nbsp; {election['seats']} Seat{'s' if election['seats'] != 1 else ''}</div>
   {f'<div class="phase2-badge">⏱ PHASE 2 — {phase2_minutes} MINUTES</div>' if phase2_minutes else ''}
+  {f'<div class="phase2-badge" style="background:#1a7a4a;">⏱ TIMER — {timer_minutes} MIN WINDOW</div>' if timer_minutes else ''}
 </div>
 
 <div class="content">
