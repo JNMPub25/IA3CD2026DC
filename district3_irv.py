@@ -119,14 +119,28 @@ def compute_threshold_elimination(vote_counts,
     below_threshold = [num for num, v in vote_counts.items() if v < cut_votes]
     actual_pct      = threshold * 100
 
-    # Step 2: Safeguard — cannot eliminate >= 50% of candidates
+    # Step 2: Safeguard — cannot eliminate >= 50% of candidates (III-C-4)
     max_eliminate = max(1, (n - 1) // 2)
 
     if len(below_threshold) > max_eliminate:
-        below_threshold = [num for num, v in sorted_cands[:max_eliminate]]
-        if below_threshold:
-            cut_votes  = vote_counts[below_threshold[-1]]
-            actual_pct = cut_votes / total * 100
+        # Take the bottom max_eliminate candidates by vote count
+        tentative = [num for num, v in sorted_cands[:max_eliminate]]
+        # Check if the cut line splits a tied group — if the last
+        # candidate to be eliminated has the same votes as the first
+        # candidate to be kept, pull back to avoid splitting the tie
+        if tentative:
+            boundary_votes = vote_counts[tentative[-1]]
+            # Remove all candidates at the boundary vote count
+            # (they stay in the race with their tied peers)
+            below_threshold = [num for num in tentative
+                               if vote_counts[num] < boundary_votes]
+            if below_threshold:
+                cut_votes  = vote_counts[below_threshold[-1]]
+                actual_pct = cut_votes / total * 100
+            # If pulling back leaves nobody to eliminate, that's OK —
+            # Step B (drop lowest) will handle the next elimination
+        else:
+            below_threshold = []
 
     return below_threshold, actual_pct
 

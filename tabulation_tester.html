@@ -609,9 +609,17 @@ function runFullTabulation(ballots, cKeys, seats, electionType) {
             elimReason = `Below ${(ELIM_THRESHOLD*100).toFixed(0)}% threshold`;
           } else {
             // Cap: only eliminate the bottom candidates up to 50% of pool
+            // But never split a tied vote group — if the cut line falls
+            // inside a tie, pull back and keep the entire tied group
             const byVotes = belowThreshold.slice().sort((a,b) => voteCounts[a] - voteCounts[b]);
-            toEliminate = byVotes.slice(0, maxEliminate);
-            elimReason = `Below ${(ELIM_THRESHOLD*100).toFixed(0)}% threshold (capped — cannot eliminate more than 50% of candidates)`;
+            const tentative = byVotes.slice(0, maxEliminate);
+            const boundaryVotes = voteCounts[tentative[tentative.length - 1]];
+            // Remove candidates at the boundary vote count (keep them with their tied peers)
+            toEliminate = tentative.filter(k => voteCounts[k] < boundaryVotes);
+            if (toEliminate.length > 0) {
+              elimReason = `Below ${(ELIM_THRESHOLD*100).toFixed(0)}% threshold (capped — cannot eliminate more than 50% of candidates)`;
+            }
+            // If pulling back leaves nobody to eliminate, Step B (drop lowest) handles it
           }
         }
 
