@@ -1,0 +1,31 @@
+{
+  "scc-w": [
+    {
+      "letter": "A",
+      "name": "Bugs Bunny"
+    },
+    {
+      "letter": "B",
+      "name": "Mickey Mouse"
+    },
+    {
+      "letter": "C",
+      "name": "Wiley Coyote"
+    },
+    {
+      "letter": "D",
+      "name": "Daffy Duck"
+    },
+    {
+      "letter": "E",
+      "name": "Porkey Pig"
+    },
+    {
+      "letter": "F",
+      "name": "Road Runner"
+    }
+  ],
+  "scc-m": [],
+  "dei": [],
+  "scc-com": []
+}

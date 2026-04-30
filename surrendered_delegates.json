@@ -1,0 +1,15 @@
+[
+  {
+    "delegate_number": "D-6042",
+    "name": "Jane Doe",
+    "status": "surrendered",
+    "surrender_time": "05/02/2026, 09:20:00",
+    "note": "Left convention early"
+  },
+  {
+    "delegate_number": "D-6088",
+    "name": "John Smith",
+    "status": "non-issued",
+    "note": "Never checked in"
+  }
+]
