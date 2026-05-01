@@ -69,6 +69,7 @@ function moveToConventionFolder() {
 const ELECTION_LABELS = {
   "scc-w":   "SCC Women",
   "scc-m":   "SCC Men-NonBinary",
+  "scc-mnb": "SCC Men-NonBinary",
   "dei":     "DEI Chair",
   "scc-com": "Convention Committee",
 };
@@ -429,16 +430,23 @@ function writeHeader(sheet, data) {
   } else if (data.ballotType === "slate") {
     sheet.appendRow([...base, "Slate Vote"]);
   } else {
-    // Rankings: keys are candidate letters (A, B, C…), values are ranks.
-    // Sort alphabetically so column order is always A, B, C…
-    const candCols = Object.keys(data.rankings || {})
-      .sort()
-      .map(n => "Candidate " + n + " Rank");
-    sheet.appendRow([...base, ...candCols]);
+    // Rankings: keys are rank positions (1, 2, 3…), values are candidate letters.
+    // Sort numerically so column order is 1st Choice, 2nd Choice, 3rd Choice…
+    const rankCols = Object.keys(data.rankings || {})
+      .map(Number)
+      .sort((a, b) => a - b)
+      .map(n => ordinal_(n) + " Choice");
+    sheet.appendRow([...base, ...rankCols]);
   }
 
   sheet.setFrozenRows(1);
   sheet.getRange(1, 1, 1, sheet.getLastColumn()).setFontWeight("bold");
+}
+
+function ordinal_(n) {
+  const s = ["th","st","nd","rd"];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 
 /**
