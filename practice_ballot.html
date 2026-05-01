@@ -105,38 +105,26 @@ html, body {
   line-height: 1.5;
 }
 
-/* ── Candidate rows (ranked) ──────────────────────────────────────── */
-.candidate-row {
+/* ── Rank-position rows (Format B — matches real ballot) ──────────── */
+.rank-row {
   display: flex;
   align-items: center;
-  padding: 0.65rem 0.75rem;
-  border-radius: 8px;
-  border: 1px solid #e0e4ea;
-  margin-bottom: 0.5rem;
-  background: #fff;
-  transition: background 0.15s, border-color 0.15s;
+  padding: 0.55rem 0.25rem;
+  border-bottom: 1px solid #eee;
   gap: 0.75rem;
 }
-.candidate-row:hover { background: #f5f8ff; }
-.candidate-row.ranked { background: #eaf3ff; border-color: #5b9bd5; }
-.candidate-row.locked { opacity: 0.45; pointer-events: none; }
-
-.cand-number {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem; height: 2rem;
-  border-radius: 50%;
-  background: #e8edf5;
-  font-weight: 700;
-  font-size: 0.85rem;
+.rank-row:last-of-type { border-bottom: none; }
+.rank-label {
+  font-size: 0.9rem;
+  font-weight: 600;
   color: #003366;
+  min-width: 5.75rem;
   flex-shrink: 0;
 }
-.cand-name { flex: 1; font-size: 1rem; font-weight: 500; }
 .rank-select {
   appearance: none;
   -webkit-appearance: none;
+  flex: 1;
   background: #f0f4fa url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23555'/%3E%3C/svg%3E") no-repeat right 0.6rem center / 10px;
   border: 1px solid #bbc8dc;
   border-radius: 6px;
@@ -144,10 +132,19 @@ html, body {
   font-size: 0.9rem;
   color: #1a1a2e;
   cursor: pointer;
-  min-width: 80px;
+  min-width: 0;
 }
 .rank-select:focus { outline: 2px solid #5b9bd5; }
 .rank-select option:disabled { color: #bbb; }
+.rank-counter {
+  font-size: 0.82rem;
+  color: #666;
+  text-align: center;
+  margin-top: 0.75rem;
+  padding: 0.4rem 0.75rem;
+  background: #f8f9fa;
+  border-radius: 6px;
+}
 
 /* ── Buttons ──────────────────────────────────────────────────────── */
 .btn {
@@ -304,9 +301,9 @@ html, body {
     </div>
 
     <div class="instructions">
-      Rank the candidates in order of preference. <strong>1st</strong> = your top choice.<br>
+      Rank the candidates in order of preference. <strong>1st choice</strong> = your top choice.<br>
       You may rank as many or as few candidates as you like.<br>
-      Use the dropdowns to assign a rank. Leave a candidate blank to skip them.
+      Use each dropdown to select a candidate for that rank. Leave a row blank to skip it.
     </div>
 
     <!-- Candidates injected here -->
@@ -510,80 +507,108 @@ function renderBallot() {
   const container = document.getElementById("candidates-container");
   container.innerHTML = "";
 
-  shuffledCandidates.forEach(c => {
+  const n = shuffledCandidates.length;
+
+  // One row per rank position (1st choice through Nth choice)
+  for (let rank = 1; rank <= n; rank++) {
     const row = document.createElement("div");
-    row.className = "candidate-row";
-    row.id = `row-${c.letter}`;
+    row.className = "rank-row";
+    row.id = `rank-row-${rank}`;
 
-    const numBadge = document.createElement("span");
-    numBadge.className   = "cand-number";
-    numBadge.textContent = c.letter;
-
-    const name = document.createElement("span");
-    name.className   = "cand-name";
-    name.textContent = c.name;
+    const label = document.createElement("span");
+    label.className = "rank-label";
+    label.textContent = `${ordinal(rank)} choice`;
 
     const sel = document.createElement("select");
     sel.className = "rank-select";
-    sel.id        = `rank-${c.letter}`;
-    sel.setAttribute("aria-label", `Rank for ${c.name}`);
+    sel.id = `rank-pos-${rank}`;
+    sel.setAttribute("aria-label", `${ordinal(rank)} choice`);
 
-    sel.appendChild(new Option("—", ""));
-    for (let r = 1; r <= shuffledCandidates.length; r++) {
-      sel.appendChild(new Option(ordinal(r), r));
-    }
+    // Placeholder
+    const placeholder = new Option("— Select candidate —", "");
+    sel.appendChild(placeholder);
 
-    if (currentRankings[c.letter]) {
-      sel.value = currentRankings[c.letter];
-      row.classList.add("ranked");
-    }
+    // Candidates in this delegate's shuffled order
+    shuffledCandidates.forEach(c => {
+      sel.appendChild(new Option(`${c.letter} — ${c.name}`, c.letter));
+    });
 
-    sel.addEventListener("change", () => onRankChange(c.letter, sel.value));
+    // Bottom visual separator (permanently disabled)
+    const sep = document.createElement("option");
+    sep.value = "";
+    sep.textContent = "—";
+    sep.disabled = true;
+    sep.dataset.separator = "true";
+    sel.appendChild(sep);
 
-    row.appendChild(numBadge);
-    row.appendChild(name);
+    // Restore saved value if this rank is already assigned
+    const currentCand = Object.keys(currentRankings).find(k => currentRankings[k] === rank);
+    if (currentCand) sel.value = currentCand;
+
+    sel.addEventListener("change", () => {
+      onRankPositionChange(rank, sel.value);
+    });
+
+    row.appendChild(label);
     row.appendChild(sel);
     container.appendChild(row);
-  });
+  }
+
+  // "X of N candidates ranked" counter
+  const counter = document.createElement("div");
+  counter.className = "rank-counter";
+  counter.id = "rank-counter";
+  container.appendChild(counter);
 
   refreshCascade();
 }
 
-function onRankChange(candLetter, value) {
-  const rank = value ? parseInt(value, 10) : null;
-
-  // Release any other candidate that held this rank
-  if (rank !== null) {
-    for (const [cl, cr] of Object.entries(currentRankings)) {
-      if (cl !== candLetter && cr === rank) {
-        currentRankings[cl] = null;
-      }
-    }
+function onRankPositionChange(rank, candidateLetter) {
+  // Clear the previous holder of this rank position
+  for (const [cl, cr] of Object.entries(currentRankings)) {
+    if (cr === rank) currentRankings[cl] = null;
   }
-  currentRankings[candLetter] = rank;
+  // Clear this candidate from any rank it previously held
+  if (candidateLetter && currentRankings[candidateLetter] !== undefined) {
+    currentRankings[candidateLetter] = null;
+  }
+  // Assign candidate to this rank
+  if (candidateLetter) {
+    currentRankings[candidateLetter] = rank;
+  }
   refreshCascade();
 }
 
 function refreshCascade() {
-  const usedRanks = new Set(
-    Object.values(currentRankings).filter(v => v !== null)
-  );
+  const n = shuffledCandidates.length;
 
-  shuffledCandidates.forEach(c => {
-    const sel = document.getElementById(`rank-${c.letter}`);
-    const row = document.getElementById(`row-${c.letter}`);
-    if (!sel) return;
+  // Build rank→candidate map and set of all ranked candidate letters
+  const rankToCand = {};
+  const rankedLetters = new Set();
+  for (const [cl, r] of Object.entries(currentRankings)) {
+    if (r !== null) { rankToCand[r] = cl; rankedLetters.add(cl); }
+  }
 
-    const myRank = currentRankings[c.letter];
-    sel.value = myRank || "";
-    row.classList.toggle("ranked", myRank !== null);
+  for (let rank = 1; rank <= n; rank++) {
+    const sel = document.getElementById(`rank-pos-${rank}`);
+    if (!sel) continue;
 
+    const currentVal = rankToCand[rank] || "";
+    sel.value = currentVal;
+
+    // Disable options for candidates already ranked in another position
     Array.from(sel.options).forEach(opt => {
-      if (!opt.value) return;
-      const r = parseInt(opt.value);
-      opt.disabled = usedRanks.has(r) && r !== myRank;
+      if (!opt.value || opt.dataset.separator) return;
+      opt.disabled = rankedLetters.has(opt.value) && opt.value !== currentVal;
     });
-  });
+  }
+
+  // Update counter
+  const counter = document.getElementById("rank-counter");
+  if (counter) {
+    const count = rankedLetters.size;
+    counter.textContent = `${count} of ${n} candidate${n !== 1 ? "s" : ""} ranked`;
+  }
 }
 
 // ── REVIEW ────────────────────────────────────────────────────────────────
@@ -612,6 +637,53 @@ document.getElementById("btn-review").addEventListener("click", () => {
     badge.textContent = "—";
     li.appendChild(badge);
     li.appendChild(document.createTextNode(` ${c.letter}. ${c.name} (not ranked)`));
+    list.appendChild(li);
+  });
+
+  show("screen-review");
+});
+
+document.getElementById("btn-back").addEventListener("click", () => show("screen-ballot"));
+
+// ── SUBMIT (practice only — no network call) ──────────────────────────────
+document.getElementById("btn-submit").addEventListener("click", () => {
+  clearInterval(countdownInterval);
+  show("screen-complete");
+});
+
+// ── PRACTICE AGAIN ────────────────────────────────────────────────────────
+document.getElementById("btn-again").addEventListener("click", () => {
+  document.getElementById("delegate-input").value = "";
+  document.getElementById("entry-error").textContent = "";
+  show("screen-entry");
+});
+</script>
+</body>
+</html>
+    list.appendChild(li);
+  });
+
+  show("screen-review");
+});
+
+document.getElementById("btn-back").addEventListener("click", () => show("screen-ballot"));
+
+// ── SUBMIT (practice only — no network call) ──────────────────────────────
+document.getElementById("btn-submit").addEventListener("click", () => {
+  clearInterval(countdownInterval);
+  show("screen-complete");
+});
+
+// ── PRACTICE AGAIN ────────────────────────────────────────────────────────
+document.getElementById("btn-again").addEventListener("click", () => {
+  document.getElementById("delegate-input").value = "";
+  document.getElementById("entry-error").textContent = "";
+  show("screen-entry");
+});
+</script>
+</body>
+</html>
+));
     list.appendChild(li);
   });
 

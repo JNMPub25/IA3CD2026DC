@@ -1512,6 +1512,7 @@ function renderRankedBallot() {
     sep.value = "";
     sep.textContent = "—";
     sep.disabled = true;
+    sep.dataset.separator = "true";
     sel.appendChild(sep);
 
     // Restore saved value if this rank is already assigned
@@ -1581,7 +1582,7 @@ function refreshCascade() {
 
     // Disable options for candidates already ranked in another position
     Array.from(sel.options).forEach(opt => {
-      if (!opt.value || opt.disabled) return;
+      if (!opt.value || opt.dataset.separator) return;
       opt.disabled = rankedLetters.has(opt.value) && opt.value !== currentVal;
     });
   }
@@ -1869,6 +1870,15 @@ document.getElementById("btn-submit").addEventListener("click", async () => {
   }
 });
 
+function flipRankings(rankings) {
+  // Convert { candidateLetter: rank } → { rank: candidateLetter }
+  const flipped = {};
+  for (const [letter, rank] of Object.entries(rankings)) {
+    if (rank !== null && rank !== undefined) flipped[rank] = letter;
+  }
+  return flipped;
+}
+
 async function doSubmit(isAuto) {
   const payload = {
     delegateNumber,
@@ -1888,7 +1898,7 @@ async function doSubmit(isAuto) {
                    }),
     isAutoSubmit:  isAuto,
     isTest:        IS_TEST,
-    rankings:      BALLOT_TYPE === "ranked" ? currentRankings : null,
+    rankings:      BALLOT_TYPE === "ranked" ? flipRankings(currentRankings) : null,
     slateVote:     BALLOT_TYPE === "slate"  ? slateVote       : null,
     choice:        BALLOT_TYPE === "runoff" ? runoffChoice     : null,
     assistedBy:    (IS_ASSISTED && isAssistingOthers && assistantName) ? assistantName : null,
