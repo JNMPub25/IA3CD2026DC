@@ -865,25 +865,18 @@ const CANDIDATES = (() => {
   return out;
 })();
 
-const ELECTION_LABELS = {
-  "scc-w":   "SCC — Women (Ranked Choice)",
-  "scc-m":   "SCC — Men / Non-Binary (Ranked Choice)",
-  "scc-mnb": "SCC — Men / Non-Binary (Ranked Choice)",
-  "dei":     "DEI Committee Chair (Ranked Choice)",
-  "scc-com": "State Convention Committee (Slate Vote)",
-};
-const ELECTION_BASE = {
-  "scc-w":   "SCC — Women",
-  "scc-m":   "SCC — Men / Non-Binary",
-  "scc-mnb": "SCC — Men / Non-Binary",
-  "dei":     "DEI Committee Chair",
-  "scc-com": "State Convention Committee",
-};
-// Use URL &name= parameter as fallback for custom elections from the dashboard
+// Election name comes from the dashboard's &name= URL parameter.
+// Ballot type suffix is added automatically based on BALLOT_TYPE and seats.
 const URL_ELECTION_NAME = params.get("name") ? decodeURIComponent(params.get("name")) : null;
-const ELECTION_LABEL = BALLOT_TYPE === "runoff"
-  ? "Runoff — " + (ELECTION_BASE[ELECTION] || URL_ELECTION_NAME || "Official Ballot")
-  : (ELECTION_LABELS[ELECTION] || URL_ELECTION_NAME || "Official Ballot");
+const ELECTION_LABEL = (() => {
+  const base = URL_ELECTION_NAME || "Official Ballot";
+  if (BALLOT_TYPE === "runoff") return "Runoff — " + base;
+  if (BALLOT_TYPE === "slate")  return base;
+  // Ranked choice: append type hint if not already present
+  if (base !== "Official Ballot" && !base.toLowerCase().includes("ranked") && !base.toLowerCase().includes("slate"))
+    return base + " (Ranked Choice)";
+  return base;
+})();
 
 // ── STATE ────────────────────────────────────────────────────────────────
 let delegateNumber     = "";

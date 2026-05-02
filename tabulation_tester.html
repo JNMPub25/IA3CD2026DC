@@ -614,8 +614,17 @@ function runFullTabulation(ballots, cKeys, seats, electionType) {
             const byVotes = belowThreshold.slice().sort((a,b) => voteCounts[a] - voteCounts[b]);
             const tentative = byVotes.slice(0, maxEliminate);
             const boundaryVotes = voteCounts[tentative[tentative.length - 1]];
-            // Remove candidates at the boundary vote count (keep them with their tied peers)
-            toEliminate = tentative.filter(k => voteCounts[k] < boundaryVotes);
+            // Only pull back if the boundary actually splits a tied group —
+            // i.e. the first kept candidate has the same votes as the last eliminated
+            const allSorted = seatActive.slice().sort((a,b) => voteCounts[a] - voteCounts[b]);
+            const firstKeptVotes = voteCounts[allSorted[maxEliminate]];
+            if (firstKeptVotes === boundaryVotes) {
+              // Tie at boundary — pull back to avoid splitting
+              toEliminate = tentative.filter(k => voteCounts[k] < boundaryVotes);
+            } else {
+              // No tie at boundary — safe to eliminate all tentative
+              toEliminate = tentative;
+            }
             if (toEliminate.length > 0) {
               elimReason = `Below ${(ELIM_THRESHOLD*100).toFixed(0)}% threshold (capped — cannot eliminate more than 50% of candidates)`;
             }

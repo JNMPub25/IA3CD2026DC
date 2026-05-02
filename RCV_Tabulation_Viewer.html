@@ -542,11 +542,24 @@ function computeAllSteps() {
       let elimReason = '';
       const sorted = seatActive.slice().sort((a, b) => voteCounts[a] - voteCounts[b]);
 
-      if (seatRound === 1) {
+      // When only 2 remain and no majority, flag as head-to-head runoff needed
+      if (seatActive.length === 2) {
+        toEliminate = [sorted[0]];
+        elimReason = `Head-to-head runoff ballot required (2 remain, no majority)`;
+      } else if (seatRound === 1) {
         const belowThreshold = seatActive.filter(k => voteCounts[k] < thresholdVotes);
         const maxElim = Math.max(1, Math.floor((seatActive.length - 1) / 2));
         if (belowThreshold.length > maxElim) {
-          toEliminate = sorted.slice(0, maxElim);
+          // Take bottom maxElim candidates
+          let tentative = sorted.slice(0, maxElim);
+          // Only pull back if the boundary splits a tied group
+          const boundaryVotes = voteCounts[tentative[tentative.length - 1]];
+          const firstKeptVotes = voteCounts[sorted[maxElim]];
+          if (firstKeptVotes === boundaryVotes) {
+            // Tie at boundary — pull back to avoid splitting
+            tentative = tentative.filter(k => voteCounts[k] < boundaryVotes);
+          }
+          toEliminate = tentative.length > 0 ? tentative : [sorted[0]];
         } else if (belowThreshold.length > 0) {
           toEliminate = belowThreshold;
         } else {

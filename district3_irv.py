@@ -125,20 +125,26 @@ def compute_threshold_elimination(vote_counts,
     if len(below_threshold) > max_eliminate:
         # Take the bottom max_eliminate candidates by vote count
         tentative = [num for num, v in sorted_cands[:max_eliminate]]
-        # Check if the cut line splits a tied group — if the last
-        # candidate to be eliminated has the same votes as the first
-        # candidate to be kept, pull back to avoid splitting the tie
+        # Only pull back if the cut line actually splits a tied group —
+        # i.e. the last candidate to be eliminated has the SAME vote
+        # count as the first candidate to be kept.
         if tentative:
             boundary_votes = vote_counts[tentative[-1]]
-            # Remove all candidates at the boundary vote count
-            # (they stay in the race with their tied peers)
-            below_threshold = [num for num in tentative
-                               if vote_counts[num] < boundary_votes]
-            if below_threshold:
-                cut_votes  = vote_counts[below_threshold[-1]]
-                actual_pct = cut_votes / total * 100
-            # If pulling back leaves nobody to eliminate, that's OK —
-            # Step B (drop lowest) will handle the next elimination
+            first_kept     = sorted_cands[max_eliminate]  # (num, votes)
+            if first_kept[1] == boundary_votes:
+                # Tie at the 50% boundary — pull back to avoid
+                # splitting tied candidates
+                below_threshold = [num for num in tentative
+                                   if vote_counts[num] < boundary_votes]
+                if below_threshold:
+                    cut_votes  = vote_counts[below_threshold[-1]]
+                    actual_pct = cut_votes / total * 100
+                # If pulling back leaves nobody to eliminate, that's OK
+                # — Step B (drop lowest) will handle the next elimination
+            else:
+                # No tie at boundary — safe to eliminate all
+                # max_eliminate candidates
+                below_threshold = list(tentative)
         else:
             below_threshold = []
 
@@ -225,6 +231,42 @@ def run_irv_one_seat(ballots, candidate_map, active_nums, election_label,
             return winner_num
 
         # ── No winner — determine eliminations ─────────────────────────
+
+        # When only 2 candidates remain and neither has majority,
+        # issue a head-to-head runoff ballot instead of mechanically
+        # dropping the lowest.
+        if len(active) == 2:
+            print(_c(f"\n  Two candidates remain — neither has majority.",
+                     _Color.YELLOW + _Color.BOLD))
+            print(_c(f"  A head-to-head runoff ballot will be issued.",
+                     _Color.YELLOW))
+            _log(f"[SEAT {seat_num} — Round {seat_round}] "
+                 f"2 remain, no majority — head-to-head runoff required.",
+                 also_print=False)
+
+            _display_round_table(candidate_map, vote_counts, total_active,
+                                 majority_needed)
+            rounds_data_out.append({
+                "seat_num":        seat_num,
+                "seat_round_num":  seat_round,
+                "vote_counts":     dict(vote_counts),
+                "total_active":    total_active,
+                "exhausted":       exhausted,
+                "majority_needed": majority_needed,
+                "elected":         [],
+                "eliminated":      [],
+                "elim_reason":     "head-to-head runoff ballot issued",
+            })
+
+            h2h_map = {n: candidate_map[n] for n in active}
+            h2h_winner = run_runoff(
+                "head-to-head", h2h_map, election_key,
+                election_label, seat_num, "H2H",
+                rounds_data_out)
+            if h2h_winner:
+                return h2h_winner
+            else:
+                return None
 
         if seat_round == 1:
             # ── STEP A: 15% threshold ──────────────────────────────────

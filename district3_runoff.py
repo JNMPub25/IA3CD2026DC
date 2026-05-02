@@ -229,11 +229,30 @@ def run_runoff(runoff_type, candidate_map_subset, election_key,
             if len(tied_in_runoff) == 1:
                 winner_num = tied_in_runoff[0]
             else:
-                print(_c("\n  ⚠  Runoff itself is tied. "
-                         "Chair must determine the winner.", _Color.RED))
-                _log("[RUNOFF TIE] Runoff result tied — "
-                     "Chair determination required.", also_print=False)
-                print(_c("  Enter the winner:", _Color.YELLOW))
+                # ── GAME OF CHANCE ──────────────────────────────────
+                print()
+                print(_c("  ╔══════════════════════════════════════════╗",
+                         _Color.RED + _Color.BOLD))
+                print(_c("  ║        ⚠  GAME OF CHANCE REQUIRED  ⚠    ║",
+                         _Color.RED + _Color.BOLD))
+                print(_c("  ╚══════════════════════════════════════════╝",
+                         _Color.RED + _Color.BOLD))
+                print(_c("\n  The runoff ballot resulted in a TIE.",
+                         _Color.RED + _Color.BOLD))
+                print(_c("  Per convention rules, the winner must be "
+                         "determined by a game of chance",
+                         _Color.YELLOW))
+                print(_c("  (e.g., coin flip, drawing of lots).",
+                         _Color.YELLOW))
+                print(_c("\n  The Chair will conduct the game of chance "
+                         "and report the winner.", _Color.YELLOW))
+                print(_c("  The winner will be removed from any remaining "
+                         "seats still to be tabulated.", _Color.CYAN))
+                _log("[GAME OF CHANCE] Runoff tied — game of chance "
+                     "required. Chair determination needed.",
+                     also_print=False)
+                print(_c("\n  Enter the winner of the game of chance:",
+                         _Color.YELLOW))
                 for i, n in enumerate(tied_in_runoff, 1):
                     print(f"    {i}. {candidate_map_subset[n]}")
                 while True:
@@ -279,6 +298,12 @@ def run_runoff(runoff_type, candidate_map_subset, election_key,
              f"Winner: {winner_name}  Eliminated: {loser_names}",
              also_print=False)
 
+        # Detect if this was a game-of-chance result (tied runoff)
+        max_votes_final = max(vote_counts.values()) if vote_counts else 0
+        tied_count = sum(1 for v in vote_counts.values()
+                         if v == max_votes_final)
+        is_game_of_chance = (tied_count > 1 and total > 0)
+
         rounds_data_out.append({
             "seat_num":        seat_num,
             "seat_round_num":  seat_round_label,
@@ -289,7 +314,10 @@ def run_runoff(runoff_type, candidate_map_subset, election_key,
             "elected":         [winner_num]
                                if runoff_type == "head-to-head" else [],
             "eliminated":      loser_nums,
-            "elim_reason":     f"{runoff_type} runoff ballot",
+            "elim_reason":     ("game of chance — runoff tied"
+                               if is_game_of_chance
+                               else f"{runoff_type} runoff ballot"),
+            "game_of_chance":  is_game_of_chance,
         })
 
     return winner_num

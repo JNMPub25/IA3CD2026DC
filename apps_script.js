@@ -33,7 +33,7 @@
  */
 
 // ── UPDATE THIS ──────────────────────────────────────────────────────────
-const SPREADSHEET_ID = "PASTE_YOUR_SPREADSHEET_ID_HERE";
+const SPREADSHEET_ID = "1eXxoAtL5zbpyOYzYCbsSxURD8Cz58-cTHzr4jnw2hqI";  // PROD spreadsheet
 
 // Name of the control tab used by the Option C timer
 const CONTROL_TAB = "Control";
@@ -69,6 +69,7 @@ function moveToConventionFolder() {
 const ELECTION_LABELS = {
   "scc-w":   "SCC Women",
   "scc-m":   "SCC Men-NonBinary",
+  "scc-mnb": "SCC Men-NonBinary",
   "dei":     "DEI Chair",
   "scc-com": "Convention Committee",
 };
@@ -429,16 +430,23 @@ function writeHeader(sheet, data) {
   } else if (data.ballotType === "slate") {
     sheet.appendRow([...base, "Slate Vote"]);
   } else {
-    // Rankings: keys are candidate letters (A, B, C…), values are ranks.
-    // Sort alphabetically so column order is always A, B, C…
-    const candCols = Object.keys(data.rankings || {})
-      .sort()
-      .map(n => "Candidate " + n + " Rank");
-    sheet.appendRow([...base, ...candCols]);
+    // Rankings: keys are rank positions (1, 2, 3…), values are candidate letters.
+    // Sort numerically so column order is 1st Choice, 2nd Choice, 3rd Choice…
+    const rankCols = Object.keys(data.rankings || {})
+      .map(Number)
+      .sort((a, b) => a - b)
+      .map(n => ordinal_(n) + " Choice");
+    sheet.appendRow([...base, ...rankCols]);
   }
 
   sheet.setFrozenRows(1);
   sheet.getRange(1, 1, 1, sheet.getLastColumn()).setFontWeight("bold");
+}
+
+function ordinal_(n) {
+  const s = ["th","st","nd","rd"];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 
 /**
@@ -477,7 +485,8 @@ function upsertRow(sheet, data) {
   } else if (data.ballotType === "slate") {
     row = [...base, data.slateVote || ""];
   } else {
-    const sorted = Object.keys(data.rankings || {}).sort();
+    // Rankings: keys are rank positions (1, 2, 3…), values are candidate letters
+    const sorted = Object.keys(data.rankings || {}).map(Number).sort((a, b) => a - b);
     const rankCols = sorted.map(n => data.rankings[n] || "");
     row = [...base, ...rankCols];
   }
@@ -503,11 +512,12 @@ function formatVoteForLog(data) {
   if (data.ballotType === "runoff") {
     return "Choice: " + (data.choice !== null && data.choice !== undefined ? data.choice : "—");
   }
+  // Rankings: { rank: candidateLetter }
   const rankings = data.rankings || {};
   return Object.entries(rankings)
-    .filter(([, rank]) => rank !== null && rank !== undefined && rank !== "")
-    .sort((a, b) => Number(a[1]) - Number(b[1]))
-    .map(([letter, rank]) => rank + "-" + letter)
+    .filter(([, letter]) => letter !== null && letter !== undefined && letter !== "")
+    .sort((a, b) => Number(a[0]) - Number(b[0]))
+    .map(([rank, letter]) => rank + "-" + letter)
     .join(", ") || "—";
 }
 
