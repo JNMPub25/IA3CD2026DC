@@ -72,7 +72,7 @@ def get_ballot_base_url():
 
 
 def make_runoff_url(base_url, runoff_election_key, candidate_map_subset):
-    """Build a ballot.html URL for a two-candidate runoff (type=runoff)."""
+    """Build a ballot.html URL for a runoff (type=runoff). Works with 2+ candidates."""
     cands_param = "-".join(
         f"{num}-{name.replace(' ', '%20')}"
         for num, name in candidate_map_subset.items()
@@ -154,7 +154,7 @@ def run_runoff(runoff_type, candidate_map_subset, election_key,
     Orchestrate one runoff ballot event.
 
     runoff_type         : "tiebreaker" | "head-to-head"
-    candidate_map_subset: {num_str: name_str}  — exactly 2 entries
+    candidate_map_subset: {num_str: name_str}  — 2 or more entries
     seat_round_label    : string used in Excel tab, e.g. "Tiebreaker" or "H2H"
     rounds_data_out     : list to append the result record to
 
@@ -167,13 +167,23 @@ def run_runoff(runoff_type, candidate_map_subset, election_key,
                     f"{runoff_type.replace('-',' ').title()}")
 
     if runoff_type == "tiebreaker":
-        print(_c(f"\n  Tie for lowest between: {names[0]}  and  {names[1]}",
-                 _Color.MAGENTA + _Color.BOLD))
+        if len(names) == 2:
+            print(_c(f"\n  Tie for lowest between: {names[0]}  and  {names[1]}",
+                     _Color.MAGENTA + _Color.BOLD))
+        else:
+            names_str = ', '.join(names[:-1]) + f', and {names[-1]}'
+            print(_c(f"\n  {len(names)}-way tie: {names_str}",
+                     _Color.MAGENTA + _Color.BOLD))
         print(_c("  A tiebreaker runoff ballot will be issued. "
                  "Delegates select ONE candidate.", _Color.GREY))
     else:
-        print(_c(f"\n  Head-to-head ballot: {names[0]}  vs  {names[1]}",
-                 _Color.MAGENTA + _Color.BOLD))
+        if len(names) == 2:
+            print(_c(f"\n  Head-to-head ballot: {names[0]}  vs  {names[1]}",
+                     _Color.MAGENTA + _Color.BOLD))
+        else:
+            names_str = ', '.join(names[:-1]) + f', and {names[-1]}'
+            print(_c(f"\n  Runoff ballot: {names_str}",
+                     _Color.MAGENTA + _Color.BOLD))
         print(_c("  Delegates select ONE candidate. "
                  "The winner is elected to this seat.", _Color.GREY))
 
@@ -187,8 +197,13 @@ def run_runoff(runoff_type, candidate_map_subset, election_key,
              _Color.GREY))
     print(_c("  1. Project the QR code or read the URL aloud.", _Color.GREY))
     print(_c("  2. Announce to delegates:", _Color.WHITE))
-    print(_c(f'     "Which candidate do you approve — {names[0]} or {names[1]}?'
-             f' You may select only one."', _Color.BOLD))
+    if len(names) == 2:
+        print(_c(f'     "Which candidate do you approve — {names[0]} or '
+                 f'{names[1]}? You may select only one."', _Color.BOLD))
+    else:
+        names_str = ', '.join(names[:-1]) + f', or {names[-1]}'
+        print(_c(f'     "Which candidate do you approve — {names_str}?'
+                 f' You may select only one."', _Color.BOLD))
     print(_c("  3. Allow time to vote, then close the ballot window.",
              _Color.GREY))
     print(_c("  4. Export the Runoff tab from Google Sheets as CSV.",
@@ -288,7 +303,9 @@ def run_runoff(runoff_type, candidate_map_subset, election_key,
 
         if runoff_type == "head-to-head":
             print(_c(f"\n  ✓ {winner_name} ELECTED "
-                     f"(Seat {seat_num} — head-to-head runoff)",
+                     f"(Seat {seat_num} — "
+                     f"{'head-to-head' if len(nums) == 2 else str(len(nums))+'-way'}"
+                     f" runoff)",
                      _Color.GREEN + _Color.BOLD))
         else:
             print(_c(f"\n  {winner_name} advances.  "

@@ -66,6 +66,8 @@ function doGet(e) {
       result = checkDelegateReassigned(delegateId);
     } else if (action === 'getQuorum') {
       result = getQuorumData();
+    } else if (action === 'getSurrendered') {
+      result = getSurrenderedData();
     } else {
       result = { error: 'Unknown action: ' + action };
     }
@@ -291,6 +293,51 @@ function getQuorumData() {
   return computeQuorum(ss);
 }
 
+/**
+ * Returns currently-surrendered delegate IDs (those who surrendered and have NOT
+ * returned or reclaimed). Used by convention_admin.py to sync the surrendered list.
+ */
+function getSurrenderedData() {
+  var ss    = SpreadsheetApp.openById(SS_ID);
+  var sheet = ss.getSheetByName(SHEET_MASTER);
+  if (!sheet) return { surrendered: [], error: 'Master sheet not found' };
+
+  var data  = sheet.getDataRange().getValues();
+  var activeD = {};   // delegateId → true if active on floor
+  var surrenderTimes = {};  // delegateId → last surrender timestamp
+
+  for (var i = 1; i < data.length; i++) {
+    var reason = String(data[i][MCL_COLS.reason - 1] || '');
+    var fromId = String(data[i][MCL_COLS.fromId - 1] || '').trim();
+    var toId   = String(data[i][MCL_COLS.toId   - 1] || '').trim();
+    var ts     = data[i][MCL_COLS.timestamp - 1] || '';
+
+    if (reason === 'Arriving' && toId.startsWith('D-')) {
+      activeD[toId] = true;
+    } else if ((reason === 'Seating-Preferred Alternate' || reason === 'Seating-Regular Alternates') && fromId.startsWith('D-')) {
+      activeD[fromId] = true;
+    } else if (reason === 'Surrender' && fromId.startsWith('D-')) {
+      delete activeD[fromId];
+      surrenderTimes[fromId] = ts ? String(ts) : getCTTimestamp();
+    } else if (reason === 'Reclaiming' && toId.startsWith('D-')) {
+      activeD[toId] = true;
+    } else if (reason === 'Returning' && toId.startsWith('D-')) {
+      activeD[toId] = true;
+    }
+  }
+
+  // Surrendered = IDs that appeared but are no longer in activeD
+  // We only return those that have a surrender record and are NOT active
+  var surrendered = [];
+  for (var id in surrenderTimes) {
+    if (!activeD[id]) {
+      surrendered.push({ id: id, status: 'surrendered', time: surrenderTimes[id] });
+    }
+  }
+
+  return { surrendered: surrendered };
+}
+
 function computeQuorum(ss) {
   var sheet = ss.getSheetByName(SHEET_MASTER);
   if (!sheet) return { seatedDelegates: 0, totalSeated: 0, quorumAchieved: false };
@@ -313,6 +360,9 @@ function computeQuorum(ss) {
       delete activeD[fromId];
     } else if (reason === 'Reclaiming' && toId.startsWith('D-')) {
       // Delegate reclaims — seat active again under their ID
+      activeD[toId] = true;
+    } else if (reason === 'Returning' && toId.startsWith('D-')) {
+      // Delegate returns and takes custody of credentials again
       activeD[toId] = true;
     }
   }
@@ -350,6 +400,7 @@ function refreshQuorumSheet(ss) {
     if (reason === 'Seating-Regular Alternates'  && fromId.startsWith('D-'))  { activeD[fromId] = true; seatedReg++; }
     if (reason === 'Surrender' && fromId.startsWith('D-'))                    { delete activeD[fromId]; }
     if (reason === 'Reclaiming' && toId.startsWith('D-'))                     { activeD[toId] = true; }
+    if (reason === 'Returning'  && toId.startsWith('D-'))                     { activeD[toId] = true; }
   }
   var totalSeated = Object.keys(activeD).length;
   var quorumPct   = (totalSeated / 243 * 100).toFixed(1) + '%';
@@ -424,7 +475,7 @@ function refreshReassignmentSheet(ss) {
 
   if (idIdx < 0) return;
 
-  // ── Build sets from MCL (mirrors computeQuorum logic, including Surrender/Reclaiming) ──
+  // ── Build sets from MCL (mirrors computeQuorum logic, including Surrender/Reclaiming/Returning) ──
   var seatedDelegateIds   = {};  // D-#### whose seat is currently active
   var arrivedAlternateIds = {};  // A-#### who have physically arrived
   var seatedAlternateIds  = {};  // A-#### who have been assigned to a delegate seat
@@ -434,12 +485,13 @@ function refreshReassignmentSheet(ss) {
     var fromId = String(mclData[i][MCL_COLS.fromId - 1] || '').trim();
     var toId   = String(mclData[i][MCL_COLS.toId   - 1] || '').trim();
 
-    // Delegate seat tracking (with Surrender/Reclaiming)
+    // Delegate seat tracking (with Surrender/Reclaiming/Returning)
     if (reason === 'Arriving' && toId.startsWith('D-'))                      seatedDelegateIds[toId] = true;
     if (reason === 'Seating-Preferred Alternate' && fromId.startsWith('D-')) seatedDelegateIds[fromId] = true;
     if (reason === 'Seating-Regular Alternates'  && fromId.startsWith('D-')) seatedDelegateIds[fromId] = true;
     if (reason === 'Surrender' && fromId.startsWith('D-'))                   delete seatedDelegateIds[fromId];
     if (reason === 'Reclaiming' && toId.startsWith('D-'))                    seatedDelegateIds[toId] = true;
+    if (reason === 'Returning'  && toId.startsWith('D-'))                    seatedDelegateIds[toId] = true;
 
     // Alternate tracking
     if (reason === 'Arriving' && toId.startsWith('A-')) arrivedAlternateIds[toId] = true;
