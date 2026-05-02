@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+h<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -864,19 +864,15 @@ const CANDIDATES = (() => {
   }
   return out;
 })();
-
-// Election name comes from the dashboard's &name= URL parameter.
-// Ballot type suffix is added automatically based on BALLOT_TYPE and seats.
-const URL_ELECTION_NAME = params.get("name") ? decodeURIComponent(params.get("name")) : null;
-const ELECTION_LABEL = (() => {
-  const base = URL_ELECTION_NAME || "Official Ballot";
-  if (BALLOT_TYPE === "runoff") return "Runoff — " + base;
-  if (BALLOT_TYPE === "slate")  return base;
-  // Ranked choice: append type hint if not already present
-  if (base !== "Official Ballot" && !base.toLowerCase().includes("ranked") && !base.toLowerCase().includes("slate"))
-    return base + " (Ranked Choice)";
-  return base;
-})();
+  const URL_ELECTION_NAME = params.get("name") ? decodeURIComponent(params.get("name")) : null;
+  const ELECTION_LABEL = (() => {
+    const base = URL_ELECTION_NAME || "Official Ballot";
+    if (BALLOT_TYPE === "runoff") return "Runoff — " + base;
+    if (BALLOT_TYPE === "slate")  return base;
+    if (base !== "Official Ballot" && !base.toLowerCase().includes("ranked") && !base.toLowerCase().includes("slate"))
+      return base + " (Ranked Choice)";
+    return base;
+  })();
 
 // ── STATE ────────────────────────────────────────────────────────────────
 let delegateNumber     = "";
